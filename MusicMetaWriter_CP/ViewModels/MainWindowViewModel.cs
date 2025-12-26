@@ -1,0 +1,419 @@
+﻿using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Controls.Notifications;
+using Avalonia.Media.Imaging;
+using Avalonia.Notification;
+using Avalonia.Platform.Storage;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using MsBox.Avalonia;
+using MsBox.Avalonia.Enums;
+using MusicMetaWriter;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.IO;
+using System.Linq;
+using System.Runtime.Intrinsics.X86;
+using System.Threading.Tasks;
+
+#pragma warning disable CS0618
+namespace MusicMetaWriter_CP.ViewModels
+{
+    public partial class MainWindowViewModel : ObservableObject
+    {
+        #region Variables
+        public static MainWindowViewModel? Instance { get; private set; }
+
+        public static AppSettings _appSettings = AppSettings.Load();
+
+        public INotificationMessageManager NotificationManager { get; } = new NotificationMessageManager();
+        private int defaultNotificationTimeSpan = 5;
+        private string defaultNotificationBackground = "#333";
+        private string defaultNotificationAccent = "#1751C3";
+
+        private static readonly HashSet<string> supportedExtensions = new() { ".mp3", ".wav", ".flac", ".aiff", ".m4a", ".ogg" };
+
+        public Dictionary<string, Bitmap?> newCoverList = new Dictionary<string, Bitmap?>();
+        #endregion
+
+        #region ObservableProperties
+        [ObservableProperty] private ObservableCollection<TrackViewModel> _tracks = new();
+        [ObservableProperty] private ObservableCollection<TrackViewModel> _backup = new();
+
+        [ObservableProperty] private bool export_mp3;
+        [ObservableProperty] private bool export_wav;
+        [ObservableProperty] private bool export_flac;
+        [ObservableProperty] private bool export_aiff;
+
+        [ObservableProperty] private bool use_ln;
+        [ObservableProperty] private double ln_target_i;
+        [ObservableProperty] private double ln_target_tpeak;
+        [ObservableProperty] private double ln_target_lu;
+
+        [ObservableProperty] private bool keep_filename;
+        [ObservableProperty] private string? fn_pattern;
+
+        [ObservableProperty] private ObservableCollection<TrackViewModel> _selectedTracks = new ObservableCollection<TrackViewModel>();
+        [ObservableProperty] private Bitmap? selectedImage;
+
+        [ObservableProperty] private bool btn_replace_enabled = false;
+        [ObservableProperty] private bool btn_remove_enabled = false;
+        #endregion
+
+        #region Helper Functions
+        private void LoadSettings()
+        {
+            Export_mp3 = _appSettings.export_mp3;
+            Export_wav = _appSettings.export_wav;
+            Export_flac = _appSettings.export_flac;
+            Export_aiff = _appSettings.export_aiff;
+
+            Use_ln = _appSettings.use_ln;
+            Ln_target_i = _appSettings.ln_target_i;
+            Ln_target_tpeak = _appSettings.ln_target_tpeak;
+            Ln_target_lu = _appSettings.ln_target_lu;
+
+            Keep_filename = _appSettings.keep_filename;
+            Fn_pattern = _appSettings.fn_pattern;
+        }
+
+        private string[] GetSelectedFormats()
+        {
+            var list = new List<string>();
+            if (Export_mp3) list.Add("mp3");
+            if (Export_wav) list.Add("wav");
+            if (Export_flac) list.Add("flac");
+            if (Export_aiff) list.Add("aiff");
+
+            return list.ToArray();
+        }
+
+        private void GenerateTrackModel(string[] paths)
+        {
+            Tracks.Clear();
+            Backup.Clear();
+
+            foreach (var storageFile in paths)
+            {
+                var tfile = TagLib.File.Create(storageFile);
+                TrackViewModel tvm = new TrackViewModel
+                {
+                    TrackNumber = (int)tfile.Tag.Track,
+                    TrackName = tfile.Tag.Title,
+                    Album = tfile.Tag.Album,
+                    Artists = tfile.Tag.Artists.Length > 0 ? string.Join(", ", tfile.Tag.Artists) : (tfile.Tag.AlbumArtists.Length > 0 ? string.Join(", ", tfile.Tag.AlbumArtists) : null),
+                    Genre = string.Join(", ", tfile.Tag.Genres),
+                    Bpm = tfile.Tag.BeatsPerMinute,
+                    Key = tfile.Tag.InitialKey,
+                    HasCover = tfile.Tag.Pictures.Length > 0,
+                    CoverImage = tfile.Tag.Pictures.Length > 0 ? new Bitmap(new MemoryStream(tfile.Tag.Pictures[0].Data.Data)) : null,
+                    Bits_per_sample = tfile.Properties.BitsPerSample,
+                    Sample_rate = tfile.Properties.AudioSampleRate,
+                    Path = storageFile
+                };
+
+                Tracks.Add(tvm);
+                Backup.Add(tvm);
+            }
+
+            ShowNotification(paths.Length + " track" + (paths.Length > 1 ? "s" : "") + " loaded.", defaultNotificationTimeSpan);
+        }
+
+        private bool ImagesAreEqual(Bitmap? bmp1, Bitmap? bmp2)
+        {
+            if (ReferenceEquals(bmp1, bmp2)) return true;
+            if (bmp1 is null || bmp2 is null) return false;
+            if (bmp1.PixelSize != bmp2.PixelSize || bmp1.Format != bmp2.Format) return false;
+
+            using var ms1 = new MemoryStream();
+            using var ms2 = new MemoryStream();
+
+            bmp1.Save(ms1);
+            bmp2.Save(ms2);
+
+            return ms1.ToArray().SequenceEqual(ms2.ToArray());
+        }
+
+        public void UpdateCoverPreview()
+        {
+            if (SelectedTracks.Count == 1)
+            {
+                SelectedImage = SelectedTracks[0].EffectiveCoverImage;
+            }
+            else if (SelectedTracks.Count > 1)
+            {
+                Bitmap? reference = SelectedTracks[0]?.EffectiveCoverImage;
+                bool allSame = SelectedTracks.All(item =>
+                {
+                    if (reference == null && item == null)
+                        return true;
+
+                    if (reference == null || item == null)
+                        return false;
+
+                    return ImagesAreEqual(reference, item.EffectiveCoverImage);
+                });
+
+                SelectedImage = allSame ? reference : null;
+            }
+
+            foreach(var item in SelectedTracks)
+            {
+                item.RefreshCoverDisplay();
+            }
+        }
+
+        private void ShowNotification(string text, int delay, string badge = "Info", NotificationType type = NotificationType.Information, bool animated = true)
+        {
+            this.NotificationManager.CreateMessage()
+                    .Accent(defaultNotificationAccent)
+                    .Animates(animated)
+                    .Background(defaultNotificationBackground)
+                    .HasBadge(badge)
+                    .HasType(type)
+                    .HasMessage(text)
+                    .Dismiss().WithDelay(TimeSpan.FromSeconds(delay))
+                    .Queue();
+        }
+        #endregion
+
+        #region Commands
+        [RelayCommand]
+        private void SaveSettings()
+        {
+            _appSettings.export_mp3 = Export_mp3;
+            _appSettings.export_wav = Export_wav;
+            _appSettings.export_flac = Export_flac;
+            _appSettings.export_aiff = Export_aiff;
+
+            _appSettings.use_ln = Use_ln;
+            _appSettings.ln_target_i = Ln_target_i;
+            _appSettings.ln_target_tpeak = Ln_target_tpeak;
+            _appSettings.ln_target_lu = Ln_target_lu;
+
+            _appSettings.keep_filename = Keep_filename;
+            _appSettings.fn_pattern = Fn_pattern;
+
+            _appSettings.Save();
+
+            ShowNotification("Your settings have been saved.", defaultNotificationTimeSpan, "Success", NotificationType.Success);
+        }
+
+        [RelayCommand]
+        private async Task LoadFilesAsync()
+        {
+            var window = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+                ? desktop.MainWindow
+                : null;
+
+            if (window == null) return;
+
+            var result = await window.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "Select Audio File(s)",
+                AllowMultiple = true,
+                FileTypeFilter = new[]
+                {
+                    new FilePickerFileType("Audio Files")
+                    {
+                        Patterns = new[] { "*.mp3", "*.wav", "*.flac", "*.aiff", "*.m4a", "*.ogg" },
+                        AppleUniformTypeIdentifiers = new[] { "public.audio" },
+                        MimeTypes = new[] { "audio/*" }
+                    }
+                }
+            });
+
+            if (result?.Count <= 0) return;
+            if (result == null) return;
+
+            var files = result.Select(storageFile => storageFile.Path.LocalPath).ToArray();
+
+            if (files.Length == 0) return;
+
+            GenerateTrackModel(files);
+        }
+
+        [RelayCommand]
+        private async Task LoadFolderAsync()
+        {
+            var window = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+                ? desktop.MainWindow
+                : null;
+
+            if (window == null) return;
+
+            var result = await window.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            {
+                Title = "Select Folder with Audio Files",
+                AllowMultiple = false
+            });
+
+            if (result?.Count <= 0) return;
+            if (result == null) return;
+
+            var path = result[0].Path.LocalPath;
+            var files = Directory.EnumerateFiles(path, "*.*", SearchOption.TopDirectoryOnly)
+                .Where(f => supportedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
+                .ToArray();
+
+            if (files.Length == 0) return;
+
+            GenerateTrackModel(files);
+        }
+
+        [RelayCommand]
+        private async Task RemoveCover()
+        {
+            if(SelectedTracks.Count == 0) return;
+
+            bool isMultiple = SelectedTracks.Count > 1;
+            List<string> paths = new List<string>();
+            foreach (var track in SelectedTracks)
+            {
+                paths.Add(track.Path);
+            }
+
+            var box = MessageBoxManager
+                .GetMessageBoxStandard(
+                    title: "Confirm",
+                    text: "Are you sure you want to remove the cover of th" + (isMultiple ? "ese" : "is") + " track" + (isMultiple ? "s" : "") + ":\r\n\r\n" + string.Join("\r\n", paths),
+                    ButtonEnum.YesNo,
+                    Icon.Warning);
+
+            var result = await box.ShowAsync();
+
+            if (result == ButtonResult.Yes)
+            {
+                foreach(var track in SelectedTracks)
+                {
+                    if (newCoverList.ContainsKey(track.Path))
+                    {
+                        newCoverList[track.Path] = null;
+                    } else
+                    {
+                        newCoverList.Add(track.Path, null);
+                    }
+                }
+
+                UpdateCoverPreview();
+                ShowNotification(SelectedTracks.Count + " cover" + (SelectedTracks.Count > 1 ? "s" : "") + " removed.", defaultNotificationTimeSpan, "Success", NotificationType.Success);
+            }
+        }
+
+        [RelayCommand]
+        private async Task ReplaceCover()
+        {
+            if (SelectedTracks.Count == 0) return;
+
+            bool isMultiple = SelectedTracks.Count > 1;
+            List<string> paths = new List<string>();
+            foreach (var track in SelectedTracks)
+            {
+                paths.Add(track.Path);
+            }
+
+            var window = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+                ? desktop.MainWindow
+                : null;
+
+            if (window == null) return;
+
+            var result = await window.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "Choose Cover",
+                AllowMultiple = false,
+                FileTypeFilter = new[]
+                {
+                    new FilePickerFileType("Image Files")
+                    {
+                        Patterns = new[] { "*.jpg", "*.png" },
+                        AppleUniformTypeIdentifiers = new[] { "public.image" },
+                        MimeTypes = new[] { "image/*" }
+                    }
+                }
+            });
+
+            if (result?.Count <= 0) return;
+            if (result == null) return;
+
+            var file = result.Select(sFile => sFile.Path.LocalPath).FirstOrDefault();
+
+            if (file == null) return;
+
+            Bitmap newCover = new Bitmap(file);
+            if (newCover.PixelSize.Width != newCover.PixelSize.Height)
+            {
+                ShowNotification("Cover image has to be squared!", defaultNotificationTimeSpan, "Error", NotificationType.Error);
+                return;
+            }
+
+            var box = MessageBoxManager
+                .GetMessageBoxStandard(
+                    title: "Confirm",
+                    text: "Are you sure you want to replace the cover of th" + (isMultiple ? "ese" : "is") + " track" + (isMultiple ? "s" : "") + ":\r\n\r\n" + string.Join("\r\n", paths) + "\r\n\r\nWith this image:\r\n" + file,
+                    ButtonEnum.YesNo,
+                    Icon.Warning);
+
+            var boxResult = await box.ShowAsync();
+
+            if (boxResult == ButtonResult.Yes)
+            {
+                foreach(var item in SelectedTracks)
+                {
+                    if (newCoverList.ContainsKey(item.Path))
+                    {
+                        newCoverList[item.Path] = newCover;
+                    } else
+                    {
+                        newCoverList.Add(item.Path, newCover);
+                    }
+                }
+
+                UpdateCoverPreview();
+            }
+        }
+        #endregion
+
+        #region Events
+        public void OnDataGridSelChange(object? sender, SelectionChangedEventArgs e, DataGrid dg)
+        {
+            SelectedTracks.Clear();
+            if (dg.SelectedItems != null)
+            {
+                foreach (var item in dg.SelectedItems)
+                {
+                    if (item is TrackViewModel track2)
+                    {
+                        SelectedTracks.Add(track2);
+                    }
+                }
+            }
+
+            UpdateCoverPreview();
+
+            if (SelectedTracks.Count > 0)
+            {
+                Btn_replace_enabled = true;
+                Btn_remove_enabled = true;
+            }
+            else
+            {
+                Btn_replace_enabled = false;
+                Btn_remove_enabled = false;
+            }
+        }
+        #endregion
+
+        public MainWindowViewModel()
+        {
+            Instance = this;
+
+            // Init Settings
+            _appSettings = AppSettings.Load();
+            LoadSettings();
+        }
+    }
+}
+#pragma warning restore CS0618
