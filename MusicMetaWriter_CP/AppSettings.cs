@@ -19,6 +19,8 @@ namespace MusicMetaWriter
         public bool keep_filename { get; set; } = false;
         public string? fn_pattern { get; set; } = "%number% - %artists% - %album% - %title%";
 
+        public string[]? hidden_columns { get; set; }
+
         private static string SettingsPath => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "BashCode", "MusicMetaWriter", "settings.json");

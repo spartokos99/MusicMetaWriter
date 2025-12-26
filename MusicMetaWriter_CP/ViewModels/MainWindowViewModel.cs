@@ -15,7 +15,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Runtime.Intrinsics.X86;
 using System.Threading.Tasks;
 
 #pragma warning disable CS0618
@@ -26,7 +25,9 @@ namespace MusicMetaWriter_CP.ViewModels
         #region Variables
         public static MainWindowViewModel? Instance { get; private set; }
 
-        public static AppSettings _appSettings = AppSettings.Load();
+        public DataGrid? MainDataGrid { get; set; }
+
+        public AppSettings? localSettings { get; set; }
 
         public INotificationMessageManager NotificationManager { get; } = new NotificationMessageManager();
         private int defaultNotificationTimeSpan = 5;
@@ -69,20 +70,31 @@ namespace MusicMetaWriter_CP.ViewModels
         #endregion
 
         #region Helper Functions
-        private void LoadSettings()
+        public void LoadSettings()
         {
-            Export_mp3 = _appSettings.export_mp3;
-            Export_wav = _appSettings.export_wav;
-            Export_flac = _appSettings.export_flac;
-            Export_aiff = _appSettings.export_aiff;
+            if (localSettings is not null && MainDataGrid is not null)
+            {
+                Export_mp3 = localSettings.export_mp3;
+                Export_wav = localSettings.export_wav;
+                Export_flac = localSettings.export_flac;
+                Export_aiff = localSettings.export_aiff;
 
-            Use_ln = _appSettings.use_ln;
-            Ln_target_i = _appSettings.ln_target_i;
-            Ln_target_tpeak = _appSettings.ln_target_tpeak;
-            Ln_target_lu = _appSettings.ln_target_lu;
+                Use_ln = localSettings.use_ln;
+                Ln_target_i = localSettings.ln_target_i;
+                Ln_target_tpeak = localSettings.ln_target_tpeak;
+                Ln_target_lu = localSettings.ln_target_lu;
 
-            Keep_filename = _appSettings.keep_filename;
-            Fn_pattern = _appSettings.fn_pattern;
+                Keep_filename = localSettings.keep_filename;
+                Fn_pattern = localSettings.fn_pattern;
+
+                foreach (var col in MainDataGrid.Columns)
+                {
+                    if (localSettings.hidden_columns is not null && localSettings.hidden_columns.Contains(col.Header?.ToString()?.ToLower().Replace(" ", "_")))
+                    {
+                        col.IsVisible = false;
+                    }
+                }
+            }
         }
 
         private string[] GetSelectedFormats()
@@ -159,31 +171,31 @@ namespace MusicMetaWriter_CP.ViewModels
 
         public void UpdateCoverPreview()
         {
+            if (SelectedTracks.Count == 0)
+            {
+                SelectedImage = null;
+                return;
+            }
+
             if (SelectedTracks.Count == 1)
             {
                 SelectedImage = SelectedTracks[0].EffectiveCoverImage;
+                return;
             }
-            else if (SelectedTracks.Count > 1)
+
+            var firstCover = SelectedTracks[0].EffectiveCoverImage;
+
+            bool allSame = true;
+            for (int i = 1; i < SelectedTracks.Count; i++)
             {
-                Bitmap? reference = SelectedTracks[0]?.EffectiveCoverImage;
-                bool allSame = SelectedTracks.All(item =>
+                if (!ImagesAreEqual(firstCover, SelectedTracks[i].EffectiveCoverImage))
                 {
-                    if (reference == null && item == null)
-                        return true;
-
-                    if (reference == null || item == null)
-                        return false;
-
-                    return ImagesAreEqual(reference, item.EffectiveCoverImage);
-                });
-
-                SelectedImage = allSame ? reference : null;
+                    allSame = false;
+                    break;
+                }
             }
 
-            foreach(var item in SelectedTracks)
-            {
-                item.RefreshCoverDisplay();
-            }
+            SelectedImage = allSame ? firstCover : null;
         }
 
         private void ShowNotification(string text, int delay, string badge = "Info", NotificationType type = NotificationType.Information, bool animated = true)
@@ -197,6 +209,12 @@ namespace MusicMetaWriter_CP.ViewModels
                     .HasMessage(text)
                     .Dismiss().WithDelay(TimeSpan.FromSeconds(delay))
                     .Queue();
+        }
+
+        private string[] GetHiddenColumns()
+        {
+            if (MainDataGrid == null) return [];
+            return MainDataGrid.Columns.Where(col => !col.IsVisible).Select(col => col.Header?.ToString()?.ToLower().Replace(" ", "_") ?? "").ToArray();
         }
         #endregion
 
@@ -227,22 +245,27 @@ namespace MusicMetaWriter_CP.ViewModels
         [RelayCommand]
         private void SaveSettings()
         {
-            _appSettings.export_mp3 = Export_mp3;
-            _appSettings.export_wav = Export_wav;
-            _appSettings.export_flac = Export_flac;
-            _appSettings.export_aiff = Export_aiff;
+            if (localSettings is not null)
+            {
+                localSettings.export_mp3 = Export_mp3;
+                localSettings.export_wav = Export_wav;
+                localSettings.export_flac = Export_flac;
+                localSettings.export_aiff = Export_aiff;
 
-            _appSettings.use_ln = Use_ln;
-            _appSettings.ln_target_i = Ln_target_i;
-            _appSettings.ln_target_tpeak = Ln_target_tpeak;
-            _appSettings.ln_target_lu = Ln_target_lu;
+                localSettings.use_ln = Use_ln;
+                localSettings.ln_target_i = Ln_target_i;
+                localSettings.ln_target_tpeak = Ln_target_tpeak;
+                localSettings.ln_target_lu = Ln_target_lu;
 
-            _appSettings.keep_filename = Keep_filename;
-            _appSettings.fn_pattern = Fn_pattern;
+                localSettings.keep_filename = Keep_filename;
+                localSettings.fn_pattern = Fn_pattern;
 
-            _appSettings.Save();
+                localSettings.hidden_columns = GetHiddenColumns();
 
-            ShowNotification("Your settings have been saved.", defaultNotificationTimeSpan, "Success", NotificationType.Success);
+                localSettings.Save();
+
+                ShowNotification("Your settings have been saved.", defaultNotificationTimeSpan, "Success", NotificationType.Success);
+            }
         }
 
         [RelayCommand]
@@ -437,20 +460,17 @@ namespace MusicMetaWriter_CP.ViewModels
 
             UpdateCoverPreview();
 
-            Btn_replace_enabled = SelectedTracks.Count > 0;
-            Btn_remove_enabled = SelectedTracks.Count > 0;
-            Btn_bpm_enabled = SelectedTracks.Count > 0;
-            Btn_key_enabled = SelectedTracks.Count > 0;
+            var count = SelectedTracks.Count;
+            Btn_replace_enabled = count > 0;
+            Btn_remove_enabled = count > 0;
+            Btn_bpm_enabled = count > 0;
+            Btn_key_enabled = count > 0;
         }
         #endregion
 
         public MainWindowViewModel()
         {
             Instance = this;
-
-            // Init Settings
-            _appSettings = AppSettings.Load();
-            LoadSettings();
         }
     }
 }
