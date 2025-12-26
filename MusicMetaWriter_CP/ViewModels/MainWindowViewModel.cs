@@ -42,6 +42,10 @@ namespace MusicMetaWriter_CP.ViewModels
         [ObservableProperty] private ObservableCollection<TrackViewModel> _tracks = new();
         [ObservableProperty] private ObservableCollection<TrackViewModel> _backup = new();
 
+        [ObservableProperty] private double _loadProgress;
+        [ObservableProperty] private string _loadStatus = "";
+        [ObservableProperty] private bool _isLoading;
+
         [ObservableProperty] private bool export_mp3;
         [ObservableProperty] private bool export_wav;
         [ObservableProperty] private bool export_flac;
@@ -60,6 +64,8 @@ namespace MusicMetaWriter_CP.ViewModels
 
         [ObservableProperty] private bool btn_replace_enabled = false;
         [ObservableProperty] private bool btn_remove_enabled = false;
+        [ObservableProperty] private bool btn_bpm_enabled = false;
+        [ObservableProperty] private bool btn_key_enabled = false;
         #endregion
 
         #region Helper Functions
@@ -90,35 +96,50 @@ namespace MusicMetaWriter_CP.ViewModels
             return list.ToArray();
         }
 
-        private void GenerateTrackModel(string[] paths)
+        private async Task GenerateTrackModelWithProgress(string[] paths, IProgress<double> progress)
         {
-            Tracks.Clear();
-            Backup.Clear();
-
-            foreach (var storageFile in paths)
+            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
             {
-                var tfile = TagLib.File.Create(storageFile);
-                TrackViewModel tvm = new TrackViewModel
+                Tracks.Clear();
+                Backup.Clear();
+            });
+
+            for (int i = 0; i < paths.Length; i++)
+            {
+                var storageFile = paths[i];
+                LoadStatus = "Loading files... (" + i + " / " + paths.Length + ")";
+
+                progress.Report((i + 1) / (double)paths.Length * 100);
+
+                try
                 {
-                    TrackNumber = (int)tfile.Tag.Track,
-                    TrackName = tfile.Tag.Title,
-                    Album = tfile.Tag.Album,
-                    Artists = tfile.Tag.Artists.Length > 0 ? string.Join(", ", tfile.Tag.Artists) : (tfile.Tag.AlbumArtists.Length > 0 ? string.Join(", ", tfile.Tag.AlbumArtists) : null),
-                    Genre = string.Join(", ", tfile.Tag.Genres),
-                    Bpm = tfile.Tag.BeatsPerMinute,
-                    Key = tfile.Tag.InitialKey,
-                    HasCover = tfile.Tag.Pictures.Length > 0,
-                    CoverImage = tfile.Tag.Pictures.Length > 0 ? new Bitmap(new MemoryStream(tfile.Tag.Pictures[0].Data.Data)) : null,
-                    Bits_per_sample = tfile.Properties.BitsPerSample,
-                    Sample_rate = tfile.Properties.AudioSampleRate,
-                    Path = storageFile
-                };
+                    using var tfile = TagLib.File.Create(storageFile);
+                    TrackViewModel tvm = new TrackViewModel
+                    {
+                        TrackNumber = (int)tfile.Tag.Track,
+                        TrackName = tfile.Tag.Title,
+                        Album = tfile.Tag.Album,
+                        Artists = tfile.Tag.Artists.Length > 0 ? string.Join(", ", tfile.Tag.Artists) : (tfile.Tag.AlbumArtists.Length > 0 ? string.Join(", ", tfile.Tag.AlbumArtists) : null),
+                        Genre = string.Join(", ", tfile.Tag.Genres),
+                        Bpm = tfile.Tag.BeatsPerMinute,
+                        Key = tfile.Tag.InitialKey,
+                        HasCover = tfile.Tag.Pictures.Length > 0,
+                        CoverImage = tfile.Tag.Pictures.Length > 0 ? new Bitmap(new MemoryStream(tfile.Tag.Pictures[0].Data.Data)) : null,
+                        Bits_per_sample = tfile.Properties.BitsPerSample,
+                        Sample_rate = tfile.Properties.AudioSampleRate,
+                        Path = storageFile
+                    };
 
-                Tracks.Add(tvm);
-                Backup.Add(tvm);
+                    Avalonia.Threading.Dispatcher.UIThread.Invoke(() =>
+                    {
+                        Tracks.Add(tvm);
+                        Backup.Add(tvm);
+                    });
+                } catch (Exception ex)
+                {
+                    ShowNotification(ex.Message, 10, "Error", NotificationType.Error);
+                }
             }
-
-            ShowNotification(paths.Length + " track" + (paths.Length > 1 ? "s" : "") + " loaded.", defaultNotificationTimeSpan);
         }
 
         private bool ImagesAreEqual(Bitmap? bmp1, Bitmap? bmp2)
@@ -181,6 +202,29 @@ namespace MusicMetaWriter_CP.ViewModels
 
         #region Commands
         [RelayCommand]
+        private async Task LoadFilesWithProgressAsync(string[] files)
+        {
+            IsLoading = true;
+            LoadStatus = "Loading files... (0 / " + files.Length + ")";
+            LoadProgress = 0;
+
+            var progress = new Progress<double>(p => LoadProgress = p);
+            try
+            {
+                await Task.Run(() => GenerateTrackModelWithProgress(files, progress));
+                ShowNotification($"{files.Length} track{(files.Length > 1 ? "s" : "")} loaded.", defaultNotificationTimeSpan, "Success", NotificationType.Success);
+            } catch (Exception ex)
+            {
+                ShowNotification("Error loading files: " + ex.Message, 10, "Error", NotificationType.Error);
+            } finally
+            {
+                IsLoading = false;
+                LoadStatus = "";
+                LoadProgress = 0;
+            }
+        }
+
+        [RelayCommand]
         private void SaveSettings()
         {
             _appSettings.export_mp3 = Export_mp3;
@@ -232,7 +276,7 @@ namespace MusicMetaWriter_CP.ViewModels
 
             if (files.Length == 0) return;
 
-            GenerateTrackModel(files);
+            await LoadFilesWithProgressAsync(files);
         }
 
         [RelayCommand]
@@ -260,7 +304,7 @@ namespace MusicMetaWriter_CP.ViewModels
 
             if (files.Length == 0) return;
 
-            GenerateTrackModel(files);
+            await LoadFilesWithProgressAsync(files);
         }
 
         [RelayCommand]
@@ -393,16 +437,10 @@ namespace MusicMetaWriter_CP.ViewModels
 
             UpdateCoverPreview();
 
-            if (SelectedTracks.Count > 0)
-            {
-                Btn_replace_enabled = true;
-                Btn_remove_enabled = true;
-            }
-            else
-            {
-                Btn_replace_enabled = false;
-                Btn_remove_enabled = false;
-            }
+            Btn_replace_enabled = SelectedTracks.Count > 0;
+            Btn_remove_enabled = SelectedTracks.Count > 0;
+            Btn_bpm_enabled = SelectedTracks.Count > 0;
+            Btn_key_enabled = SelectedTracks.Count > 0;
         }
         #endregion
 
