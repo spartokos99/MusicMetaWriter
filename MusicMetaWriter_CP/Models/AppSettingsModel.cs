@@ -2,9 +2,9 @@
 using System.IO;
 using System.Text.Json;
 
-namespace MusicMetaWriter
+namespace MusicMetaWriter.Models
 {
-    public class AppSettings
+    public class AppSettingsModel
     {
         public bool export_mp3 { get; set; } = true;
         public bool export_wav { get; set; } = true;
@@ -26,14 +26,14 @@ namespace MusicMetaWriter
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "BashCode", "MusicMetaWriter", "settings.json");
 
-        public static AppSettings Load()
+        public static AppSettingsModel Load()
         {
             if (File.Exists(SettingsPath))
             {
                 var json = File.ReadAllText(SettingsPath);
-                return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+                return JsonSerializer.Deserialize<AppSettingsModel>(json) ?? new AppSettingsModel();
             }
-            return new AppSettings();
+            return new AppSettingsModel();
         }
 
         public void Save()

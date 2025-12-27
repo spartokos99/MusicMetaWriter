@@ -9,7 +9,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MsBox.Avalonia;
 using MsBox.Avalonia.Enums;
-using MusicMetaWriter;
+using MusicMetaWriter.Models;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -27,7 +27,7 @@ namespace MusicMetaWriter_CP.ViewModels
 
         public DataGrid? MainDataGrid { get; set; }
 
-        public AppSettings? localSettings { get; set; }
+        public AppSettingsModel? localSettings { get; set; }
 
         public INotificationMessageManager NotificationManager { get; } = new NotificationMessageManager();
         private int defaultNotificationTimeSpan = 5;
@@ -40,8 +40,8 @@ namespace MusicMetaWriter_CP.ViewModels
         #endregion
 
         #region ObservableProperties
-        [ObservableProperty] private ObservableCollection<TrackViewModel> _tracks = new();
-        [ObservableProperty] private ObservableCollection<TrackViewModel> _backup = new();
+        [ObservableProperty] private ObservableCollection<TrackModel> _tracks = new();
+        [ObservableProperty] private ObservableCollection<TrackModel> _backup = new();
 
         [ObservableProperty] private double _loadProgress;
         [ObservableProperty] private string _loadStatus = "";
@@ -61,7 +61,7 @@ namespace MusicMetaWriter_CP.ViewModels
         [ObservableProperty] private bool keep_filename;
         [ObservableProperty] private string? fn_pattern;
 
-        [ObservableProperty] private ObservableCollection<TrackViewModel> _selectedTracks = new ObservableCollection<TrackViewModel>();
+        [ObservableProperty] private ObservableCollection<TrackModel> _selectedTracks = new ObservableCollection<TrackModel>();
         [ObservableProperty] private Bitmap? selectedImage;
 
         [ObservableProperty] private bool btn_replace_enabled = false;
@@ -128,7 +128,7 @@ namespace MusicMetaWriter_CP.ViewModels
                 try
                 {
                     using var tfile = TagLib.File.Create(storageFile);
-                    TrackViewModel tvm = new TrackViewModel
+                    TrackModel tvm = new TrackModel
                     {
                         TrackNumber = (int)tfile.Tag.Track,
                         TrackName = tfile.Tag.Title,
@@ -454,7 +454,7 @@ namespace MusicMetaWriter_CP.ViewModels
             {
                 foreach (var item in dg.SelectedItems)
                 {
-                    if (item is TrackViewModel track2)
+                    if (item is TrackModel track2)
                     {
                         SelectedTracks.Add(track2);
                     }

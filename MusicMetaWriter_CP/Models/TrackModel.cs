@@ -3,7 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace MusicMetaWriter_CP.ViewModels
 {
-    public partial class TrackViewModel : ObservableObject
+    public partial class TrackModel : ObservableObject
     {
         [ObservableProperty] private int _trackNumber;
         [ObservableProperty] private bool _hasCover;

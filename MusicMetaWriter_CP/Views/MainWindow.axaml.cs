@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using MusicMetaWriter;
+using MusicMetaWriter.Models;
 using MusicMetaWriter_CP.ViewModels;
 using WinRT;
 
@@ -26,7 +26,7 @@ namespace MusicMetaWriter_CP.Views
                 vm.MainDataGrid = dg;
 
                 // init settings
-                vm.localSettings = AppSettings.Load();
+                vm.localSettings = AppSettingsModel.Load();
                 vm.LoadSettings();
             }
         }
