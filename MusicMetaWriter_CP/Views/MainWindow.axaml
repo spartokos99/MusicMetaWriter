@@ -6,7 +6,7 @@
         xmlns:mc="http://openxmlformats.org/markup-compatibility/2006"
         xmlns:converters="using:MusicMetaWriter_CP.Converters"
         xmlns:viewmodels="using:MusicMetaWriter_CP.ViewModels"
-        d:DesignWidth="1800" d:DesignHeight="1050"
+        d:DesignWidth="1800" d:DesignHeight="1100"
         x:Class="MusicMetaWriter_CP.Views.MainWindow"
         x:DataType="viewmodels:MainWindowViewModel"
         Title="MusicMetaWriter"
@@ -16,7 +16,7 @@
 
     <Window.Resources>
 		<converters:NonHideableColumnConverter x:Key="NonHideableColumnConverter" />
-    </Window.Resources>
+    </Window.Resources> 
 
     <DockPanel>
 		<!-- Top Bar -->
@@ -98,6 +98,8 @@
                         <TextBlock Text="File Options" FontWeight="SemiBold" />
                         <CheckBox Content="Create sub-directory for each track" IsChecked="{Binding Cr_subdirectory}" />
                         <CheckBox Content="Keep original filename" IsChecked="{Binding Keep_filename}" />
+
+                        <TextBlock Text="Filename Pattern" Margin="0,8,0,0" />
                         <TextBox Text="{Binding Fn_pattern}" IsEnabled="{Binding !Keep_filename}" IsReadOnly="false" />
                         <TextBlock Text="Example: %number% - %artists% - %album% - %title%"
                                    FontSize="11" Foreground="Gray" Margin="0,4,0,0" />
@@ -226,14 +228,6 @@
                         <DataGridTextColumn Header="Sample Rate" Binding="{Binding Sample_rate}" Width="100" />
 
                         <DataGridTextColumn Header="Path" Binding="{Binding Path}" IsReadOnly="True" Width="*" />
-
-                        <DataGridTemplateColumn Header="Reset" Width="80">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <Button Content="Reset" />
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
                     </DataGrid.Columns>
                 </DataGrid>
             </Border>

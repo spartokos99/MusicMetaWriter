@@ -375,6 +375,8 @@ namespace MusicMetaWriter_CP.ViewModels
                     {
                         newCoverList.Add(track.Path, null);
                     }
+
+                    track.RefreshCoverDisplay();
                 }
 
                 UpdateCoverPreview();
@@ -449,8 +451,9 @@ namespace MusicMetaWriter_CP.ViewModels
                     {
                         newCoverList.Add(item.Path, newCover);
                     }
-                }
 
+                    item.RefreshCoverDisplay();
+                }
                 UpdateCoverPreview();
             }
         }
