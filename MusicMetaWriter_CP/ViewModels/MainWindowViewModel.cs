@@ -9,7 +9,9 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MsBox.Avalonia;
 using MsBox.Avalonia.Enums;
+using MusicMetaWriter.Enums;
 using MusicMetaWriter.Models;
+using MusicMetaWriter_CP.Views;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -30,9 +32,9 @@ namespace MusicMetaWriter_CP.ViewModels
         public AppSettingsModel? localSettings { get; set; }
 
         public INotificationMessageManager NotificationManager { get; } = new NotificationMessageManager();
-        private int defaultNotificationTimeSpan = 5;
-        private string defaultNotificationBackground = "#333";
-        private string defaultNotificationAccent = "#1751C3";
+        public int defaultNotificationTimeSpan = 5;
+        public string defaultNotificationBackground = "#333";
+        public string defaultNotificationAccent = "#1751C3";
 
         private static readonly HashSet<string> supportedExtensions = new() { ".mp3", ".wav", ".flac", ".aiff", ".m4a", ".ogg" };
 
@@ -200,7 +202,7 @@ namespace MusicMetaWriter_CP.ViewModels
             SelectedImage = allSame ? firstCover : null;
         }
 
-        private void ShowNotification(string text, int delay, string badge = "Info", NotificationType type = NotificationType.Information, bool animated = true)
+        public void ShowNotification(string text, int delay, string badge = "Info", NotificationType type = NotificationType.Information, bool animated = true)
         {
             this.NotificationManager.CreateMessage()
                     .Accent(defaultNotificationAccent)
@@ -222,6 +224,41 @@ namespace MusicMetaWriter_CP.ViewModels
 
         #region Commands
         [RelayCommand]
+        private void SaveSettings()
+        {
+            if (localSettings is null) localSettings = AppSettingsModel.Load();
+            
+            localSettings.export_mp3 = Export_mp3;
+            localSettings.export_wav = Export_wav;
+            localSettings.export_flac = Export_flac;
+            localSettings.export_aiff = Export_aiff;
+            localSettings.use_ln = Use_ln;
+            localSettings.ln_target_i = Ln_target_i;
+            localSettings.ln_target_tpeak = Ln_target_tpeak;
+            localSettings.ln_target_lu = Ln_target_lu;
+            localSettings.cr_subdirectory = Cr_subdirectory;
+            localSettings.keep_filename = Keep_filename;
+            localSettings.fn_pattern = Fn_pattern;
+            localSettings.hidden_columns = GetHiddenColumns();
+
+            localSettings.Save(AppSettingsType.Default);
+            ShowNotification("Your settings have been saved.", defaultNotificationTimeSpan, "Success", NotificationType.Success);
+        }
+
+        [RelayCommand]
+        private void OpenAdvancedSettings()
+        {
+            var mainWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+                ? desktop.MainWindow
+                : null;
+
+            if (mainWindow is null) return;
+
+            var settingsWindow = new SettingsWindow(mainWindow, this, localSettings ?? AppSettingsModel.Load());
+            settingsWindow.ShowDialog(mainWindow);
+        }
+
+        [RelayCommand]
         private async Task LoadFilesWithProgressAsync(string[] files)
         {
             IsLoading = true;
@@ -241,33 +278,6 @@ namespace MusicMetaWriter_CP.ViewModels
                 IsLoading = false;
                 LoadStatus = "";
                 LoadProgress = 0;
-            }
-        }
-
-        [RelayCommand]
-        private void SaveSettings()
-        {
-            if (localSettings is not null)
-            {
-                localSettings.export_mp3 = Export_mp3;
-                localSettings.export_wav = Export_wav;
-                localSettings.export_flac = Export_flac;
-                localSettings.export_aiff = Export_aiff;
-
-                localSettings.use_ln = Use_ln;
-                localSettings.ln_target_i = Ln_target_i;
-                localSettings.ln_target_tpeak = Ln_target_tpeak;
-                localSettings.ln_target_lu = Ln_target_lu;
-
-                localSettings.cr_subdirectory = Cr_subdirectory;
-                localSettings.keep_filename = Keep_filename;
-                localSettings.fn_pattern = Fn_pattern;
-
-                localSettings.hidden_columns = GetHiddenColumns();
-
-                localSettings.Save();
-
-                ShowNotification("Your settings have been saved.", defaultNotificationTimeSpan, "Success", NotificationType.Success);
             }
         }
 

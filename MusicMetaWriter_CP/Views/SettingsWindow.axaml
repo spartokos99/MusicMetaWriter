@@ -1,0 +1,55 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:MusicMetaWriter_CP.ViewModels"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="MusicMetaWriter_CP.Views.SettingsWindow"
+        x:DataType="vm:SettingsWindowViewModel"
+        WindowStartupLocation="CenterOwner"
+        Width="500" Height="600"
+        MinWidth="500" MinHeight="500"
+        CanResize="True"
+        CanMaximize="False"
+        CanMinimize="False"
+        Title="Advanced Settings">
+
+    <DockPanel>
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="*, Auto">
+            <ScrollViewer>
+		        <StackPanel Margin="20" Spacing="10" HorizontalAlignment="Stretch" VerticalAlignment="Top">
+                        <Border BorderThickness="2" BorderBrush="Purple" Padding="10" CornerRadius="5">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="Experimental" FontWeight="SemiBold" />
+				                <CheckBox Content="Enable better cover preview (slow)" IsChecked="{Binding Use_better_cover}" />
+                            </StackPanel>
+                        </Border>
+                        <Border BorderThickness="2" BorderBrush="Purple" Padding="10" CornerRadius="5">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="Theme" FontWeight="SemiBold" />
+				                <ComboBox SelectedIndex="{Binding Use_theme}">
+							        <ComboBoxItem Content="System" />
+                                    <ComboBoxItem Content="Dark" />
+                                    <ComboBoxItem Content="Light" />
+                                </ComboBox>
+                            </StackPanel>
+                        </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <!-- Bottom -->
+        <Grid DockPanel.Dock="Bottom" Margin="20">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Bottom" Spacing="8">
+				<Button Content="Import Config" />
+                <Button Content="Export Config" />
+            </StackPanel>
+
+			<StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom" Spacing="8">
+                <Button Content="Save" Command="{Binding SaveAdvancedSettingsCommand}" />
+            </StackPanel>
+        </Grid>
+        
+    </DockPanel>
+
+</Window>

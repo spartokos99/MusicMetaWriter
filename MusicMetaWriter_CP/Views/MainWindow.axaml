@@ -10,7 +10,7 @@
         x:Class="MusicMetaWriter_CP.Views.MainWindow"
         x:DataType="viewmodels:MainWindowViewModel"
         Title="MusicMetaWriter"
-        MinWidth="720" MinHeight="1000"
+        MinWidth="1100" MinHeight="1000"
         Background="{DynamicResource ThemeBackgroundBrush}"
         Icon="">
 
@@ -20,15 +20,21 @@
 
     <DockPanel>
 		<!-- Top Bar -->
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="12,10">
-            <TextBlock Text="MusicMetaWriter" Classes="Header" VerticalAlignment="Center"/>
-            <TextBlock Text="by BashCode" Foreground="{DynamicResource ThemeForegroundMidBrush}" VerticalAlignment="Center" Margin="10,0"/>
-            <TextBlock Text="|" Foreground="{DynamicResource ThemeForegroundMidBrush}" VerticalAlignment="Center" Margin="8,0"/>
+        <Grid DockPanel.Dock="Top" Margin="15, 15, 15, 5" ColumnDefinitions="*, Auto">
+            <!-- Left Side Title / Buttons -->
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <TextBlock Text="MusicMetaWriter" Classes="Header" VerticalAlignment="Center" FontWeight="Bold" />
+                <TextBlock Text="by BashCode" Foreground="{DynamicResource ThemeForegroundMidBrush}" VerticalAlignment="Center" Margin="10,0"/>
+                <TextBlock Text="|" Foreground="{DynamicResource ThemeForegroundMidBrush}" VerticalAlignment="Center" Margin="8,0"/>
 
-            <Button Content="Load File(s)" Command="{Binding LoadFilesCommand}" />
-            <Button Content="Load Folder" Command="{Binding LoadFolderCommand}" />
-            <Button Content="Save Settings" Command="{Binding SaveSettingsCommand}" />
-        </StackPanel>
+                <Button Content="Load File(s)" Command="{Binding LoadFilesCommand}" />
+                <Button Content="Load Folder" Command="{Binding LoadFolderCommand}" />
+                <Button Content="Save Settings" Command="{Binding SaveSettingsCommand}" />
+            </StackPanel>
+
+            <!-- Advanced Settings -->
+            <Button Content="Advanced Settings" VerticalAlignment="Center" HorizontalAlignment="Right" Command="{Binding OpenAdvancedSettingsCommand}" />
+        </Grid>
 
         <!-- Bottom Bar -->
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" Margin="12,10" HorizontalAlignment="Right">

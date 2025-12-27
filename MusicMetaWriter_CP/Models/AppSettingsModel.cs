@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MusicMetaWriter.Enums;
+using System;
 using System.IO;
 using System.Text.Json;
 
@@ -6,6 +7,7 @@ namespace MusicMetaWriter.Models
 {
     public class AppSettingsModel
     {
+        #region App Settings
         public bool export_mp3 { get; set; } = true;
         public bool export_wav { get; set; } = true;
         public bool export_flac { get; set; } = true;
@@ -21,6 +23,12 @@ namespace MusicMetaWriter.Models
         public string? fn_pattern { get; set; } = "%number% - %artists% - %album% - %title%";
 
         public string[]? hidden_columns { get; set; }
+        #endregion
+
+        #region Advanced Settings
+        public bool use_better_cover { get; set; } = true;
+        public ThemeEnum use_theme { get; set; } = ThemeEnum.System;
+        #endregion
 
         private static string SettingsPath => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -36,14 +44,46 @@ namespace MusicMetaWriter.Models
             return new AppSettingsModel();
         }
 
-        public void Save()
+        public void Save(AppSettingsType type = AppSettingsType.Both)
         {
+            AppSettingsModel current;
+            if (File.Exists(SettingsPath))
+            {
+                var json = File.ReadAllText(SettingsPath);
+                current = JsonSerializer.Deserialize<AppSettingsModel>(json) ?? new AppSettingsModel();
+            } else
+            {
+                current = new AppSettingsModel();
+            }
+
+            if (type == AppSettingsType.Default || type == AppSettingsType.Both)
+            {
+                current.export_mp3 = this.export_mp3;
+                current.export_wav = this.export_wav;
+                current.export_flac = this.export_flac;
+                current.export_aiff = this.export_aiff;
+                current.use_ln = this.use_ln;
+                current.ln_target_i = this.ln_target_i;
+                current.ln_target_tpeak = this.ln_target_tpeak;
+                current.ln_target_lu = this.ln_target_lu;
+                current.cr_subdirectory = this.cr_subdirectory;
+                current.keep_filename = this.keep_filename;
+                current.fn_pattern = this.fn_pattern;
+                current.hidden_columns = this.hidden_columns;
+            }
+
+            if (type == AppSettingsType.Advanced || type == AppSettingsType.Both)
+            {
+                current.use_better_cover = this.use_better_cover;
+                current.use_theme = this.use_theme;
+            }
+
             var dir = Path.GetDirectoryName(SettingsPath);
             if (dir != null && !Directory.Exists(dir))
                 Directory.CreateDirectory(dir);
 
-            var json = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(SettingsPath, json);
+            var jsonOut = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(SettingsPath, jsonOut);
         }
     }
 }
