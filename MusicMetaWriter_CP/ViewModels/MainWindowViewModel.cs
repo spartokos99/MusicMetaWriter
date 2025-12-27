@@ -57,6 +57,7 @@ namespace MusicMetaWriter_CP.ViewModels
         [ObservableProperty] private double ln_target_tpeak;
         [ObservableProperty] private double ln_target_lu;
 
+        [ObservableProperty] private bool cr_subdirectory;
         [ObservableProperty] private bool keep_filename;
         [ObservableProperty] private string? fn_pattern;
 
@@ -84,6 +85,7 @@ namespace MusicMetaWriter_CP.ViewModels
                 Ln_target_tpeak = localSettings.ln_target_tpeak;
                 Ln_target_lu = localSettings.ln_target_lu;
 
+                Cr_subdirectory = localSettings.cr_subdirectory;
                 Keep_filename = localSettings.keep_filename;
                 Fn_pattern = localSettings.fn_pattern;
 
@@ -257,6 +259,7 @@ namespace MusicMetaWriter_CP.ViewModels
                 localSettings.ln_target_tpeak = Ln_target_tpeak;
                 localSettings.ln_target_lu = Ln_target_lu;
 
+                localSettings.cr_subdirectory = Cr_subdirectory;
                 localSettings.keep_filename = Keep_filename;
                 localSettings.fn_pattern = Fn_pattern;
 

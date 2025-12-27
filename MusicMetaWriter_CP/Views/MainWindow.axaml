@@ -89,7 +89,8 @@
 
                     <!-- File Name Pattern -->
                     <StackPanel Orientation="Vertical" Spacing="4">
-                        <TextBlock Text="File Name Pattern" FontWeight="SemiBold" />
+                        <TextBlock Text="File Options" FontWeight="SemiBold" />
+                        <CheckBox Content="Create sub-directory for each track" IsChecked="{Binding Cr_subdirectory}" />
                         <CheckBox Content="Keep original filename" IsChecked="{Binding Keep_filename}" />
                         <TextBox Text="{Binding Fn_pattern}" IsEnabled="{Binding !Keep_filename}" IsReadOnly="false" />
                         <TextBlock Text="Example: %number% - %artists% - %album% - %title%"

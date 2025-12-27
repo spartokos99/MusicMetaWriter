@@ -16,6 +16,7 @@ namespace MusicMetaWriter
         public double ln_target_tpeak { get; set; } = -1.5;
         public double ln_target_lu { get; set; } = 11;
 
+        public bool cr_subdirectory { get; set; } = true;
         public bool keep_filename { get; set; } = false;
         public string? fn_pattern { get; set; } = "%number% - %artists% - %album% - %title%";
 
