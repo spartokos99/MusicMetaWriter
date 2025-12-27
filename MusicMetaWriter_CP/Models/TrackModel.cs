@@ -1,6 +1,7 @@
 ﻿using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using System;
 
 namespace MusicMetaWriter_CP.ViewModels
 {
@@ -38,6 +39,11 @@ namespace MusicMetaWriter_CP.ViewModels
         {
             OnPropertyChanged(nameof(EffectiveCoverImage));
             OnPropertyChanged(nameof(HasEffectiveCover));
+        }
+
+        public void NotifyAll()
+        {
+            OnPropertyChanged(string.Empty);
         }
     }
 }

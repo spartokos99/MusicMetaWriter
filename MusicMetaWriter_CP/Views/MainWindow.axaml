@@ -1,4 +1,5 @@
 
+
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:controls="using:Avalonia.Notification.Controls"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -32,8 +33,15 @@
                 <Button Content="Save Settings" Command="{Binding SaveSettingsCommand}" />
             </StackPanel>
 
-            <!-- Advanced Settings -->
-            <Button Content="Advanced Settings" VerticalAlignment="Center" HorizontalAlignment="Right" Command="{Binding OpenAdvancedSettingsCommand}" />
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" HorizontalAlignment="Right">
+                <TextBlock Text="|" Foreground="{DynamicResource ThemeForegroundMidBrush}" VerticalAlignment="Center" Margin="8,0"/>
+
+                <Button Content="Batch Fill" />
+
+                <TextBlock Text="|" Foreground="{DynamicResource ThemeForegroundMidBrush}" VerticalAlignment="Center" Margin="8,0"/>
+				<Button Content="Advanced Settings" VerticalAlignment="Center" HorizontalAlignment="Right" Command="{Binding OpenAdvancedSettingsCommand}" />
+            </StackPanel>
+            
         </Grid>
 
         <!-- Bottom Bar -->
@@ -65,7 +73,7 @@
         <!-- Main Content -->
         <Grid ColumnDefinitions="Auto, *">
 
-            <ScrollViewer Margin="30,10">
+            <ScrollViewer Margin="30,10" Grid.Column="0">
                 <StackPanel Orientation="Vertical"
                             Spacing="20"
                             VerticalAlignment="Top"
@@ -164,7 +172,8 @@
                     BorderThickness="1"
                     CornerRadius="6"
                     Margin="0,10,15,0">
-                <DataGrid ItemsSource="{Binding Tracks}"
+                <DataGrid x:Name="MyDataGrid"
+                          ItemsSource="{Binding Tracks}"
                           AutoGenerateColumns="False"
                           IsReadOnly="False"
                           GridLinesVisibility="All"
@@ -176,8 +185,7 @@
                           ColumnWidth="*"
                           HorizontalScrollBarVisibility="Auto"
                           VerticalScrollBarVisibility="Auto"
-                          Loaded="MyDataGrid_Loaded"
-                          x:Name="MyDataGrid">
+                          Loaded="MyDataGrid_Loaded">
 
                     <DataGrid.ContextMenu>
 						<ContextMenu DataContext="{Binding RelativeSource={RelativeSource AncestorType=DataGrid}, Path=DataContext}">
@@ -228,6 +236,18 @@
                         <DataGridTextColumn Header="Sample Rate" Binding="{Binding Sample_rate}" Width="100" />
 
                         <DataGridTextColumn Header="Path" Binding="{Binding Path}" IsReadOnly="True" Width="*" />
+
+                        <DataGridTemplateColumn Header="Reset" Width="80">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Button Content="Reset"
+                                            Command="{Binding $parent[DataGrid].DataContext.ResetTrackCommand}"
+                                            CommandParameter="{Binding}"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                     </DataGrid.Columns>
                 </DataGrid>
             </Border>

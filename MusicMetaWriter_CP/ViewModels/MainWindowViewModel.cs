@@ -15,6 +15,7 @@ using MusicMetaWriter_CP.Views;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -112,52 +113,6 @@ namespace MusicMetaWriter_CP.ViewModels
             return list.ToArray();
         }
 
-        private async Task GenerateTrackModelWithProgress(string[] paths, IProgress<double> progress)
-        {
-            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
-            {
-                Tracks.Clear();
-                Backup.Clear();
-            });
-
-            for (int i = 0; i < paths.Length; i++)
-            {
-                var storageFile = paths[i];
-                LoadStatus = "Loading files... (" + i + " / " + paths.Length + ")";
-
-                progress.Report((i + 1) / (double)paths.Length * 100);
-
-                try
-                {
-                    using var tfile = TagLib.File.Create(storageFile);
-                    TrackModel tvm = new TrackModel
-                    {
-                        TrackNumber = (int)tfile.Tag.Track,
-                        TrackName = tfile.Tag.Title,
-                        Album = tfile.Tag.Album,
-                        Artists = tfile.Tag.Artists.Length > 0 ? string.Join(", ", tfile.Tag.Artists) : (tfile.Tag.AlbumArtists.Length > 0 ? string.Join(", ", tfile.Tag.AlbumArtists) : null),
-                        Genre = string.Join(", ", tfile.Tag.Genres),
-                        Bpm = tfile.Tag.BeatsPerMinute,
-                        Key = tfile.Tag.InitialKey,
-                        HasCover = tfile.Tag.Pictures.Length > 0,
-                        CoverImage = tfile.Tag.Pictures.Length > 0 ? new Bitmap(new MemoryStream(tfile.Tag.Pictures[0].Data.Data)) : null,
-                        Bits_per_sample = tfile.Properties.BitsPerSample,
-                        Sample_rate = tfile.Properties.AudioSampleRate,
-                        Path = storageFile
-                    };
-
-                    Avalonia.Threading.Dispatcher.UIThread.Invoke(() =>
-                    {
-                        Tracks.Add(tvm);
-                        Backup.Add(tvm);
-                    });
-                } catch (Exception ex)
-                {
-                    ShowNotification(ex.Message, 10, "Error", NotificationType.Error);
-                }
-            }
-        }
-
         private bool ImagesAreEqual(Bitmap? bmp1, Bitmap? bmp2)
         {
             if (ReferenceEquals(bmp1, bmp2)) return true;
@@ -202,6 +157,12 @@ namespace MusicMetaWriter_CP.ViewModels
             SelectedImage = allSame ? firstCover : null;
         }
 
+        private string[] GetHiddenColumns()
+        {
+            if (MainDataGrid == null) return [];
+            return MainDataGrid.Columns.Where(col => !col.IsVisible).Select(col => col.Header?.ToString()?.ToLower().Replace(" ", "_") ?? "").ToArray();
+        }
+
         public void ShowNotification(string text, int delay, string badge = "Info", NotificationType type = NotificationType.Information, bool animated = true)
         {
             this.NotificationManager.CreateMessage()
@@ -215,10 +176,64 @@ namespace MusicMetaWriter_CP.ViewModels
                     .Queue();
         }
 
-        private string[] GetHiddenColumns()
+        private async Task GenerateTrackModelWithProgress(string[] paths, IProgress<double> progress)
         {
-            if (MainDataGrid == null) return [];
-            return MainDataGrid.Columns.Where(col => !col.IsVisible).Select(col => col.Header?.ToString()?.ToLower().Replace(" ", "_") ?? "").ToArray();
+            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                Tracks.Clear();
+                Backup.Clear();
+            });
+
+            for (int i = 0; i < paths.Length; i++)
+            {
+                var storageFile = paths[i];
+                LoadStatus = "Loading files... (" + i + " / " + paths.Length + ")";
+
+                progress.Report((i + 1) / (double)paths.Length * 100);
+
+                try
+                {
+                    using var tfile = TagLib.File.Create(storageFile);
+                    TrackModel tvm = new TrackModel
+                    {
+                        TrackNumber = (int)tfile.Tag.Track,
+                        TrackName = tfile.Tag.Title,
+                        Album = tfile.Tag.Album,
+                        Artists = tfile.Tag.Artists.Length > 0 ? string.Join(", ", tfile.Tag.Artists) : (tfile.Tag.AlbumArtists.Length > 0 ? string.Join(", ", tfile.Tag.AlbumArtists) : null),
+                        Genre = string.Join(", ", tfile.Tag.Genres),
+                        Bpm = tfile.Tag.BeatsPerMinute,
+                        Key = tfile.Tag.InitialKey,
+                        HasCover = tfile.Tag.Pictures.Length > 0,
+                        CoverImage = tfile.Tag.Pictures.Length > 0 ? new Bitmap(new MemoryStream(tfile.Tag.Pictures[0].Data.Data)) : null,
+                        Bits_per_sample = tfile.Properties.BitsPerSample,
+                        Sample_rate = tfile.Properties.AudioSampleRate,
+                        Path = storageFile
+                    };
+
+                    Avalonia.Threading.Dispatcher.UIThread.Invoke(() =>
+                    {
+                        Tracks.Add(tvm);
+                    });
+                }
+                catch (Exception ex)
+                {
+                    ShowNotification(ex.Message, 10, "Error", NotificationType.Error);
+                }
+            }
+
+            // add all files to backup task
+            Backup = new ObservableCollection<TrackModel>(Tracks.Select(item => new TrackModel
+            {
+                TrackNumber = item.TrackNumber,
+                TrackName = item.TrackName,
+                Album = item.Album,
+                Artists = item.Artists,
+                Genre = item.Genre,
+                Bpm = item.Bpm,
+                Key = item.Key,
+                CoverImage = item.CoverImage,
+                Path = item.Path
+            }));
         }
         #endregion
 
@@ -456,6 +471,37 @@ namespace MusicMetaWriter_CP.ViewModels
                 }
                 UpdateCoverPreview();
             }
+        }
+
+        [RelayCommand]
+        private void ResetTrack(TrackModel trackToReset)
+        {
+            if (trackToReset is null) return;
+
+            var backupTrack = Backup.FirstOrDefault(t => t.Path == trackToReset.Path);
+            if (backupTrack is null) return;
+
+            trackToReset.TrackNumber = backupTrack.TrackNumber;
+            trackToReset.TrackName = backupTrack.TrackName;
+            trackToReset.Album = backupTrack.Album;
+            trackToReset.Artists = backupTrack.Artists;
+            trackToReset.Genre = backupTrack.Genre;
+            trackToReset.Bpm = backupTrack.Bpm;
+            trackToReset.Key = backupTrack.Key;
+            trackToReset.CoverImage = backupTrack.CoverImage;
+
+            if (newCoverList.ContainsKey(trackToReset.Path ?? ""))
+            {
+                newCoverList.Remove(trackToReset.Path ?? "");
+            }
+
+            trackToReset.RefreshCoverDisplay();
+            trackToReset.NotifyAll();
+            UpdateCoverPreview();
+
+            ShowNotification("Track reset to original metadata.", 4, "Info", NotificationType.Information);
+            ShowNotification(trackToReset.TrackName, 10);
+            ShowNotification(backupTrack.TrackName, 10);
         }
         #endregion
 
