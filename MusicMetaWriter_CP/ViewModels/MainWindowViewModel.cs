@@ -2,7 +2,6 @@
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Notifications;
-using Avalonia.Media.Imaging;
 using Avalonia.Notification;
 using Avalonia.Platform.Storage;
 using Avalonia.Styling;
@@ -22,6 +21,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Bitmap = Avalonia.Media.Imaging.Bitmap;
+using Icon = MsBox.Avalonia.Enums.Icon;
 
 #pragma warning disable CS0618
 namespace MusicMetaWriter_CP.ViewModels
@@ -47,11 +48,14 @@ namespace MusicMetaWriter_CP.ViewModels
         public Window? mainWindow;
 
         string logDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
+        static string ffmpegPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ffmpeg");
         #endregion
 
         #region ObservableProperties
         [ObservableProperty] private ObservableCollection<TrackModel> _tracks = new();
         [ObservableProperty] private ObservableCollection<TrackModel> _backup = new();
+
+        [ObservableProperty] private ObservableCollection<int> _convertToBitItems = new ObservableCollection<int> { 24, 16 };
 
         [ObservableProperty] private double _loadProgress;
         [ObservableProperty] private string _loadStatus = "";
@@ -68,10 +72,13 @@ namespace MusicMetaWriter_CP.ViewModels
         [ObservableProperty] private double ln_target_lu;
 
         [ObservableProperty] private bool cr_subdirectory;
+        [ObservableProperty] private bool convertBit;
+        [ObservableProperty] private int _convertToBit;
+
         [ObservableProperty] private bool keep_filename;
         [ObservableProperty] private string? fn_pattern;
 
-        [ObservableProperty] private ObservableCollection<TrackModel> _selectedTracks = new ObservableCollection<TrackModel>();
+        [ObservableProperty] private ObservableCollection<TrackModel> _selectedTracks = new();
         [ObservableProperty] private Bitmap? selectedImage;
 
         [ObservableProperty] private bool btn_replace_enabled = false;
@@ -109,6 +116,9 @@ namespace MusicMetaWriter_CP.ViewModels
                 Ln_target_lu = localSettings.ln_target_lu;
 
                 Cr_subdirectory = localSettings.cr_subdirectory;
+                ConvertBit = localSettings.convertBit;
+                ConvertToBit = localSettings.convertToBit;
+
                 Keep_filename = localSettings.keep_filename;
                 Fn_pattern = localSettings.fn_pattern;
 
@@ -284,6 +294,28 @@ namespace MusicMetaWriter_CP.ViewModels
                 Path = item.Path
             }));
         }
+
+        public bool CheckFFMPEG(bool silent = false)
+        {
+            Directory.CreateDirectory(ffmpegPath);
+            if (!File.Exists(Path.Combine(ffmpegPath, "ffmpeg.exe"))) {
+                var box = MessageBoxManager.GetMessageBoxStandard(new MessageBoxStandardParams
+                {
+                    CanResize = false,
+                    ContentHeader = "FFMPEG missing",
+                    ContentTitle = "Error",
+                    ContentMessage = "You need to download ffmpeg for exporting to work. Copy ffmpeg.exe to " + ffmpegPath,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                    ShowInCenter = true,
+                    ButtonDefinitions = ButtonEnum.Ok
+                });
+
+                if (!silent) box.ShowAsync();
+                return false;
+            }
+
+            return true;
+        }
         #endregion
 
         #region Commands
@@ -301,6 +333,8 @@ namespace MusicMetaWriter_CP.ViewModels
             localSettings.ln_target_tpeak = Ln_target_tpeak;
             localSettings.ln_target_lu = Ln_target_lu;
             localSettings.cr_subdirectory = Cr_subdirectory;
+            localSettings.convertBit = ConvertBit;
+            localSettings.convertToBit = ConvertToBit;
             localSettings.keep_filename = Keep_filename;
             localSettings.fn_pattern = Fn_pattern;
             localSettings.hidden_columns = GetHiddenColumns();

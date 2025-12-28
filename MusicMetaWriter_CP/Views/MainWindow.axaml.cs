@@ -29,6 +29,8 @@ namespace MusicMetaWriter_CP.Views
                 vm.localSettings = AppSettingsModel.Load();
                 vm.LoadSettings();
                 vm.PrepareLogs();
+
+                vm.CheckFFMPEG();
             }
         }
     }

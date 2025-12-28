@@ -74,7 +74,17 @@
 
         <!-- Main Content -->
         <Grid ColumnDefinitions="Auto, *">
-            <ScrollViewer Margin="30,10" Grid.Column="0">
+            <Border CornerRadius="20" Effect="blur(10)" Margin="15,10,15,0" BoxShadow="0 10 20 0 #60000000" Opacity="0.95">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                        <GradientStop Color="#11FFFFFF" Offset="0" />
+                        <GradientStop Color="#22FFFFFF" Offset="0.5" />
+                        <GradientStop Color="#11FFFFFF" Offset="1" />
+                    </LinearGradientBrush>
+                </Border.Background>
+            </Border>
+
+            <ScrollViewer Margin="30,10" Grid.Column="0" VerticalScrollBarVisibility="Hidden">
                 <StackPanel Orientation="Vertical"
                             Spacing="20"
                             VerticalAlignment="Top"
@@ -102,16 +112,28 @@
                         </Border>
                     </StackPanel>
 
-                    <!-- File Name Pattern -->
+                    <!-- File Options -->
                     <StackPanel Orientation="Vertical" Spacing="4">
                         <TextBlock Text="File Options" FontWeight="SemiBold" />
                         <CheckBox Content="Create sub-directory for each track" IsChecked="{Binding Cr_subdirectory}" />
-                        <CheckBox Content="Keep original filename" IsChecked="{Binding Keep_filename}" />
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <CheckBox Content="Convert 32bit to:" IsChecked="{Binding ConvertBit}" />
+                            <ComboBox SelectedIndex="0"
+                                        ItemsSource="{Binding ConvertToBitItems}"
+                                        SelectedValue="{Binding ConvertToBit}"
+                                        IsEnabled="{Binding ConvertBit}" />
+                            <TextBlock Text="bit" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </StackPanel>
 
+                    <!-- File Name -->
+                    <StackPanel Orientation="Vertical" Spacing="4">
+						<TextBlock Text="File Name" FontWeight="SemiBold" />
+                        <CheckBox Content="Keep original filename" IsChecked="{Binding Keep_filename}" />
                         <TextBlock Text="Filename Pattern" Margin="0,8,0,0" />
                         <TextBox Text="{Binding Fn_pattern}" IsEnabled="{Binding !Keep_filename}" IsReadOnly="false" />
                         <TextBlock Text="Example: %number% - %artists% - %album% - %title%"
-                                   FontSize="11" Foreground="Gray" Margin="0,4,0,0" />
+                                    FontSize="11" Foreground="Gray" Margin="0,4,0,0" />
                     </StackPanel>
 
                     <StackPanel Orientation="Vertical" Spacing="4">
@@ -127,10 +149,10 @@
                                     Width="300"
                                     CornerRadius="4">
                                 <Image Source="{Binding SelectedImage}"
-                                       Stretch="Uniform"
-                                       StretchDirection="Both"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center" />
+                                        Stretch="Uniform"
+                                        StretchDirection="Both"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center" />
                             </Border>
                         </Grid>
 

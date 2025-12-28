@@ -19,6 +19,9 @@ namespace MusicMetaWriter.Models
         public double ln_target_lu { get; set; } = 11;
 
         public bool cr_subdirectory { get; set; } = true;
+        public bool convertBit { get; set; } = false;
+        public int convertToBit { get; set; } = 24;
+
         public bool keep_filename { get; set; } = false;
         public string? fn_pattern { get; set; } = "%number% - %artists% - %album% - %title%";
 
@@ -69,6 +72,7 @@ namespace MusicMetaWriter.Models
                 current.ln_target_tpeak = this.ln_target_tpeak;
                 current.ln_target_lu = this.ln_target_lu;
                 current.cr_subdirectory = this.cr_subdirectory;
+                current.convertBit = this.convertBit;
                 current.keep_filename = this.keep_filename;
                 current.fn_pattern = this.fn_pattern;
                 current.hidden_columns = this.hidden_columns;
