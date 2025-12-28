@@ -5,17 +5,20 @@ using Avalonia.Controls.Notifications;
 using Avalonia.Media.Imaging;
 using Avalonia.Notification;
 using Avalonia.Platform.Storage;
+using Avalonia.Styling;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MsBox.Avalonia;
+using MsBox.Avalonia.Dto;
 using MsBox.Avalonia.Enums;
+using MsBox.Avalonia.Models;
 using MusicMetaWriter.Enums;
 using MusicMetaWriter.Models;
 using MusicMetaWriter_CP.Views;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -40,6 +43,10 @@ namespace MusicMetaWriter_CP.ViewModels
         private static readonly HashSet<string> supportedExtensions = new() { ".mp3", ".wav", ".flac", ".aiff", ".m4a", ".ogg" };
 
         public Dictionary<string, Bitmap?> newCoverList = new Dictionary<string, Bitmap?>();
+
+        public Window? mainWindow;
+
+        string logDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
         #endregion
 
         #region ObservableProperties
@@ -69,11 +76,24 @@ namespace MusicMetaWriter_CP.ViewModels
 
         [ObservableProperty] private bool btn_replace_enabled = false;
         [ObservableProperty] private bool btn_remove_enabled = false;
-        [ObservableProperty] private bool btn_bpm_enabled = false;
-        [ObservableProperty] private bool btn_key_enabled = false;
+        [ObservableProperty] private bool btn_analyze_enabled = false;
         #endregion
 
         #region Helper Functions
+        public void PrepareLogs()
+        {
+            try
+            {
+                if (!Directory.Exists(logDir))
+                {
+                    Directory.CreateDirectory(logDir);
+                }
+            } catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+            }
+        }
+
         public void LoadSettings()
         {
             if (localSettings is not null && MainDataGrid is not null)
@@ -99,6 +119,8 @@ namespace MusicMetaWriter_CP.ViewModels
                         col.IsVisible = false;
                     }
                 }
+
+                SetTheme();
             }
         }
 
@@ -111,6 +133,24 @@ namespace MusicMetaWriter_CP.ViewModels
             if (Export_aiff) list.Add("aiff");
 
             return list.ToArray();
+        }
+
+        public void SetTheme()
+        {
+            string theme = localSettings.use_theme == ThemeEnum.Dark ? "dark" : (localSettings.use_theme == ThemeEnum.Light ? "light" : "default");
+            switch (theme.ToLower())
+            {
+                case "light":
+                    Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
+                    break;
+                case "dark":
+                    Application.Current!.RequestedThemeVariant = ThemeVariant.Dark;
+                    break;
+                case "system":
+                default:
+                    Application.Current!.RequestedThemeVariant = ThemeVariant.Default;
+                    break;
+            }
         }
 
         private bool ImagesAreEqual(Bitmap? bmp1, Bitmap? bmp2)
@@ -142,19 +182,25 @@ namespace MusicMetaWriter_CP.ViewModels
                 return;
             }
 
-            var firstCover = SelectedTracks[0].EffectiveCoverImage;
-
-            bool allSame = true;
-            for (int i = 1; i < SelectedTracks.Count; i++)
+            if (localSettings is not null && localSettings.use_better_cover)
             {
-                if (!ImagesAreEqual(firstCover, SelectedTracks[i].EffectiveCoverImage))
+                var firstCover = SelectedTracks[0].EffectiveCoverImage;
+                bool allSame = true;
+                for (int i = 1; i < SelectedTracks.Count; i++)
                 {
-                    allSame = false;
-                    break;
+                    if (!ImagesAreEqual(firstCover, SelectedTracks[i].EffectiveCoverImage))
+                    {
+                        allSame = false;
+                        break;
+                    }
                 }
-            }
 
-            SelectedImage = allSame ? firstCover : null;
+                SelectedImage = allSame ? firstCover : null;
+                return;
+            } else
+            {
+                SelectedImage = null;
+            }
         }
 
         private string[] GetHiddenColumns()
@@ -184,6 +230,9 @@ namespace MusicMetaWriter_CP.ViewModels
                 Backup.Clear();
             });
 
+            bool useOgCover = localSettings!.reduce_size == 0;
+            int coverSize = localSettings!.reduce_size == 1 ? 300 : (localSettings!.reduce_size == 2 ? 200 : 100);
+
             for (int i = 0; i < paths.Length; i++)
             {
                 var storageFile = paths[i];
@@ -204,7 +253,7 @@ namespace MusicMetaWriter_CP.ViewModels
                         Bpm = tfile.Tag.BeatsPerMinute,
                         Key = tfile.Tag.InitialKey,
                         HasCover = tfile.Tag.Pictures.Length > 0,
-                        CoverImage = tfile.Tag.Pictures.Length > 0 ? new Bitmap(new MemoryStream(tfile.Tag.Pictures[0].Data.Data)) : null,
+                        CoverImage = tfile.Tag.Pictures.Length > 0 ? (useOgCover ? new Bitmap(new MemoryStream(tfile.Tag.Pictures[0].Data.Data)) : Bitmap.DecodeToWidth(new MemoryStream(tfile.Tag.Pictures[0].Data.Data), coverSize)) : null,
                         Bits_per_sample = tfile.Properties.BitsPerSample,
                         Sample_rate = tfile.Properties.AudioSampleRate,
                         Path = storageFile
@@ -269,8 +318,39 @@ namespace MusicMetaWriter_CP.ViewModels
 
             if (mainWindow is null) return;
 
-            var settingsWindow = new SettingsWindow(mainWindow, this, localSettings ?? AppSettingsModel.Load());
+            var settingsWindow = new SettingsWindow(mainWindow!, this, localSettings ?? AppSettingsModel.Load());
             settingsWindow.ShowDialog(mainWindow);
+        }
+
+        [RelayCommand]
+        private void OpenBatchFill()
+        {
+            var mainWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+               ? desktop.MainWindow
+               : null;
+
+            if (mainWindow is null) return;
+
+            var batchWindow = new BatchFillWindow(mainWindow, this.MainDataGrid!.Columns, SelectedTracks, Tracks);
+            batchWindow.ShowDialog(mainWindow);
+        }
+
+        [RelayCommand]
+        private void OpenLogFolder()
+        {
+            try
+            {
+                ProcessStartInfo startInfo = new()
+                {
+                    FileName = logDir,
+                    UseShellExecute = true
+                };
+
+                Process.Start(startInfo);
+            } catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+            }
         }
 
         [RelayCommand]
@@ -349,7 +429,7 @@ namespace MusicMetaWriter_CP.ViewModels
             if (result == null) return;
 
             var path = result[0].Path.LocalPath;
-            var files = Directory.EnumerateFiles(path, "*.*", SearchOption.TopDirectoryOnly)
+            var files = Directory.EnumerateFiles(path, "*.*", localSettings!.search_subdirectories ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly)
                 .Where(f => supportedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
                 .ToArray();
 
@@ -500,8 +580,87 @@ namespace MusicMetaWriter_CP.ViewModels
             UpdateCoverPreview();
 
             ShowNotification("Track reset to original metadata.", 4, "Info", NotificationType.Information);
-            ShowNotification(trackToReset.TrackName, 10);
-            ShowNotification(backupTrack.TrackName, 10);
+        }
+
+        [RelayCommand]
+        public void ResetTracks()
+        {
+            if (Tracks is null) return;
+            foreach (TrackModel trackToReset in Tracks)
+            {
+                var backupTrack = Backup.FirstOrDefault(t => t.Path == trackToReset.Path);
+                if(backupTrack is null) continue;
+
+                trackToReset.TrackNumber = backupTrack.TrackNumber;
+                trackToReset.TrackName = backupTrack.TrackName;
+                trackToReset.Album = backupTrack.Album;
+                trackToReset.Artists = backupTrack.Artists;
+                trackToReset.Genre = backupTrack.Genre;
+                trackToReset.Bpm = backupTrack.Bpm;
+                trackToReset.Key = backupTrack.Key;
+                trackToReset.CoverImage = backupTrack.CoverImage;
+
+                if (newCoverList.ContainsKey(trackToReset.Path ?? ""))
+                {
+                    newCoverList.Remove(trackToReset.Path ?? "");
+                }
+
+                trackToReset.RefreshCoverDisplay();
+                trackToReset.NotifyAll();
+            }
+
+            UpdateCoverPreview();
+
+            ShowNotification("Tracks reset to original metadata.", 4, "Info", NotificationType.Information);
+        }
+
+        [RelayCommand]
+        private async Task ShowAnalyzeWindow()
+        {
+            if (SelectedTracks is null || SelectedTracks.Count == 0) return;
+
+            var box = MessageBoxManager.GetMessageBoxCustom(new MessageBoxCustomParams
+            {
+                CanResize = false,
+                ContentHeader = "Analyze Tracks",
+                ContentTitle = "Analyze Tracks",
+                ContentMessage = "Are you sure you want to analyze " + SelectedTracks.Count + " track" + (SelectedTracks.Count > 1 ? "s" : "") + "?",
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                SizeToContent = SizeToContent.WidthAndHeight,
+                ButtonDefinitions = new List<ButtonDefinition>
+                {
+                    new ButtonDefinition { Name = "Key" },
+                    new ButtonDefinition { Name = "Cancel" }
+                }
+            });
+
+            var result = await box.ShowAsync();
+
+            IsLoading = true;
+            LoadProgress = 0;
+
+            if (result == "Key")
+            {
+                LoadStatus = "Analyzing Key...";
+
+                var progress = new Progress<double>(percent => LoadProgress = percent);
+
+                try
+                {
+                    //await Task.Run(() => AnalyzeKeyInBackground(SelectedTracks, progress));
+
+                    LoadStatus = "Key analysis completed!";
+                }
+                catch (Exception ex)
+                {
+                    LoadStatus = $"Error: {ex.Message}";
+                }
+                finally
+                {
+                    IsLoading = false;
+                    LoadProgress = 100;
+                }
+            }
         }
         #endregion
 
@@ -525,14 +684,17 @@ namespace MusicMetaWriter_CP.ViewModels
             var count = SelectedTracks.Count;
             Btn_replace_enabled = count > 0;
             Btn_remove_enabled = count > 0;
-            Btn_bpm_enabled = count > 0;
-            Btn_key_enabled = count > 0;
+            Btn_analyze_enabled = count > 0;
         }
         #endregion
 
         public MainWindowViewModel()
         {
             Instance = this;
+
+            mainWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+                ? desktop.MainWindow
+                : null;
         }
     }
 }

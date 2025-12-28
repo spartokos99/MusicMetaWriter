@@ -10,6 +10,7 @@ public partial class SettingsWindow : Window
     {
         InitializeComponent();
     }
+
     public SettingsWindow(Window owner, MainWindowViewModel parentVm, AppSettingsModel localSettings)
     {
         InitializeComponent();

@@ -28,6 +28,8 @@ namespace MusicMetaWriter.Models
         #region Advanced Settings
         public bool use_better_cover { get; set; } = true;
         public ThemeEnum use_theme { get; set; } = ThemeEnum.System;
+        public bool search_subdirectories { get; set; } = false;
+        public int reduce_size { get; set; } = 3;
         #endregion
 
         private static string SettingsPath => Path.Combine(
@@ -76,6 +78,8 @@ namespace MusicMetaWriter.Models
             {
                 current.use_better_cover = this.use_better_cover;
                 current.use_theme = this.use_theme;
+                current.search_subdirectories = this.search_subdirectories;
+                current.reduce_size = this.reduce_size;
             }
 
             var dir = Path.GetDirectoryName(SettingsPath);

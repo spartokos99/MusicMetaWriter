@@ -28,6 +28,7 @@ namespace MusicMetaWriter_CP.Views
                 // init settings
                 vm.localSettings = AppSettingsModel.Load();
                 vm.LoadSettings();
+                vm.PrepareLogs();
             }
         }
     }

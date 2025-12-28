@@ -20,17 +20,35 @@
 		        <StackPanel Margin="20" Spacing="10" HorizontalAlignment="Stretch" VerticalAlignment="Top">
                         <Border BorderThickness="2" BorderBrush="Purple" Padding="10" CornerRadius="5">
                             <StackPanel Spacing="10">
-                                <TextBlock Text="Experimental" FontWeight="SemiBold" />
-				                <CheckBox Content="Enable better cover preview (slow)" IsChecked="{Binding Use_better_cover}" />
-                            </StackPanel>
-                        </Border>
-                        <Border BorderThickness="2" BorderBrush="Purple" Padding="10" CornerRadius="5">
-                            <StackPanel Spacing="10">
                                 <TextBlock Text="Theme" FontWeight="SemiBold" />
 				                <ComboBox SelectedIndex="{Binding Use_theme}">
 							        <ComboBoxItem Content="System" />
                                     <ComboBoxItem Content="Dark" />
                                     <ComboBoxItem Content="Light" />
+                                </ComboBox>
+                            </StackPanel>
+                        </Border>
+                        <Border BorderThickness="2" BorderBrush="Purple" Padding="10" CornerRadius="5">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="Load Folder" FontWeight="SemiBold" />
+				                <CheckBox Content="Also search sub-directories for audio files" IsChecked="{Binding Search_subdirectories}" />
+                            </StackPanel>
+                        </Border>
+                        <Border BorderThickness="2" BorderBrush="Purple" Padding="10" CornerRadius="5">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="Track Covers (only in app)" FontWeight="SemiBold" />
+                                <StackPanel Orientation="Vertical" Spacing="1">
+                                    <TextBlock Text="This settings are only for displaying the covers within this app." FontStyle="Italic" Foreground="DarkGray" />
+                                    <TextBlock Text="It has no impact on the covers written to the metadata." FontStyle="Italic" Foreground="DarkGray" />
+                                </StackPanel>
+           
+				                <CheckBox Content="Enable better cover preview (slow - not recommended with original cover size)" IsChecked="{Binding Use_better_cover}" />
+                                <TextBlock Text="Reduce cover image size:" />
+                                <ComboBox SelectedIndex="{Binding Reduce_size}">
+                                    <ComboBoxItem Content="Original (slow)" />
+                                    <ComboBoxItem Content="300px" />
+                                    <ComboBoxItem Content="200px" />
+                                    <ComboBoxItem Content="100px (fastest)" />
                                 </ComboBox>
                             </StackPanel>
                         </Border>

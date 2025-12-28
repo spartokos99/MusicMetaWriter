@@ -17,8 +17,10 @@ namespace MusicMetaWriter_CP.ViewModels
         #endregion
 
         #region ObservableProperties
-        [ObservableProperty] private bool use_better_cover;
-        [ObservableProperty] private ThemeEnum use_theme;
+        [ObservableProperty] public bool search_subdirectories;
+        [ObservableProperty] public ThemeEnum use_theme;
+        [ObservableProperty] public bool use_better_cover;
+        [ObservableProperty] public int reduce_size;
         #endregion
 
         #region Helper
@@ -26,6 +28,8 @@ namespace MusicMetaWriter_CP.ViewModels
         {
             Use_better_cover = _tempSettings.use_better_cover;
             Use_theme = _tempSettings.use_theme;
+            Search_subdirectories = _tempSettings.search_subdirectories;
+            Reduce_size = _tempSettings.reduce_size;
         }
         #endregion
 
@@ -35,9 +39,12 @@ namespace MusicMetaWriter_CP.ViewModels
         {
             _tempSettings.use_better_cover = Use_better_cover;
             _tempSettings.use_theme = Use_theme;
+            _tempSettings.search_subdirectories = Search_subdirectories;
+            _tempSettings.reduce_size = Reduce_size;
 
             _tempSettings.Save(AppSettingsType.Advanced);
 
+            _parentVm.SetTheme();
             _parentVm.ShowNotification("Your adv. settings have been saved.", _parentVm.defaultNotificationTimeSpan, "Success", NotificationType.Success);
 
             CloseRequested?.Invoke(this, EventArgs.Empty);

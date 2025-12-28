@@ -1,0 +1,44 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:MusicMetaWriter_CP.ViewModels"
+        mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="250"
+        x:Class="MusicMetaWriter_CP.Views.BatchFillWindow"
+        x:DataType="vm:BatchFillViewModel"
+        WindowStartupLocation="CenterOwner"
+        Width="400" Height="250"
+        MinWidth="400" MinHeight="250"
+        CanResize="False"
+        CanMaximize="False"
+        CanMinimize="False"
+        Title="Batch Fill">
+
+    <StackPanel Margin="16" Spacing="12">
+        <TextBlock Text="Column:" />
+        <ComboBox ItemsSource="{Binding ColumnHeaders}" SelectedItem="{Binding Sel_column}" SelectionChanged="ValueChanged"></ComboBox>
+
+
+        <TextBlock Text="Please enter a value:" />
+        <TextBox Text="{Binding Text}" TextChanged="ValueChangedText" IsVisible="{Binding !IsNumeric}" />
+        <NumericUpDown Text="{Binding Text}" IsVisible="{Binding IsNumeric}" Minimum="0" Maximum="300" Increment="0.1" />
+
+        <CheckBox Content="{Binding SelectedCount}"
+                  IsEnabled="{Binding !DisableSelection}"
+                  IsChecked="{Binding OnlySelection}" />
+
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Spacing="8">
+
+            <Button Content="Cancel"
+                    IsEnabled="True"
+                    Command="{Binding CancelCommand}" />
+
+            <Button Content="Batch Fill"
+                    IsEnabled="{Binding CanFill}"
+                    Command="{Binding OkCommand}"
+                    IsDefault="True" />
+        </StackPanel>
+    </StackPanel>
+</Window>
