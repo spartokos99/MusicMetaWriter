@@ -19,7 +19,10 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
+using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Bitmap = Avalonia.Media.Imaging.Bitmap;
 using Icon = MsBox.Avalonia.Enums.Icon;
@@ -48,7 +51,8 @@ namespace MusicMetaWriter_CP.ViewModels
         public Window? mainWindow;
 
         string logDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
-        static string ffmpegPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ffmpeg");
+        public static string ffmpegPath =>
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ffmpeg", RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "ffmpeg.exe" : "ffmpeg");
         #endregion
 
         #region ObservableProperties
@@ -57,8 +61,11 @@ namespace MusicMetaWriter_CP.ViewModels
 
         [ObservableProperty] private ObservableCollection<int> _convertToBitItems = new ObservableCollection<int> { 24, 16 };
 
+        [ObservableProperty] private bool ffmpegFound = false;
+
         [ObservableProperty] private double _loadProgress;
         [ObservableProperty] private string _loadStatus = "";
+        [ObservableProperty] private bool _showProgress;
         [ObservableProperty] private bool _isLoading;
 
         [ObservableProperty] private bool export_mp3;
@@ -232,6 +239,58 @@ namespace MusicMetaWriter_CP.ViewModels
                     .Queue();
         }
 
+        private static void ExtractTarXz(string archive, string target)
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "tar",
+                Arguments = $"-xJf \"{archive}\" -C \"{target}\"",
+                CreateNoWindow = true
+            })!.WaitForExit();
+        }
+
+        private static void MakeExecutable(string path)
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "chmod",
+                Arguments = $"+x \"{path}\"",
+                CreateNoWindow = true
+            })!.WaitForExit();
+        }
+
+        private static string GetDownloadUrl()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                return "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip";
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                return "https://evermeet.cx/ffmpeg/getrelease/zip";
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                return "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz";
+
+            throw new PlatformNotSupportedException();
+        }
+
+        public void CheckFFMPEG()
+        {
+            // system-wide
+            if (File.Exists(ffmpegPath))
+            {
+                IsLoading = false;
+                LoadStatus = "";
+                FfmpegFound = true;
+                return;
+            }
+
+            IsLoading = true;
+            LoadStatus = "ffmpeg not found!";
+            FfmpegFound = false;
+        }
+        #endregion
+
+        #region Tasks
         private async Task GenerateTrackModelWithProgress(string[] paths, IProgress<double> progress)
         {
             await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
@@ -295,26 +354,43 @@ namespace MusicMetaWriter_CP.ViewModels
             }));
         }
 
-        public bool CheckFFMPEG(bool silent = false)
+        private async Task DownloadFfmpegAsync()
         {
-            Directory.CreateDirectory(ffmpegPath);
-            if (!File.Exists(Path.Combine(ffmpegPath, "ffmpeg.exe"))) {
-                var box = MessageBoxManager.GetMessageBoxStandard(new MessageBoxStandardParams
-                {
-                    CanResize = false,
-                    ContentHeader = "FFMPEG missing",
-                    ContentTitle = "Error",
-                    ContentMessage = "You need to download ffmpeg for exporting to work. Copy ffmpeg.exe to " + ffmpegPath,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                    ShowInCenter = true,
-                    ButtonDefinitions = ButtonEnum.Ok
-                });
+            IsLoading = true;
+            LoadStatus = "Downloading ffmpeg... ";
 
-                if (!silent) box.ShowAsync();
-                return false;
+            var url = GetDownloadUrl();
+            var tempDir = Path.Combine(Path.GetTempPath(), "ffmpeg-download-" + Guid.NewGuid());
+            Directory.CreateDirectory(tempDir);
+
+            var archivePath = Path.Combine(tempDir, Path.GetFileName(url));
+
+            using var http = new HttpClient();
+            await File.WriteAllBytesAsync(archivePath, await http.GetByteArrayAsync(url));
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                ZipFile.ExtractToDirectory(archivePath, tempDir);
+                var exe = Directory.GetFiles(tempDir, "ffmpeg.exe", SearchOption.AllDirectories)[0];
+                File.Copy(exe, ffmpegPath, overwrite: true);
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                ZipFile.ExtractToDirectory(archivePath, tempDir);
+                var bin = Directory.GetFiles(tempDir, "ffmpeg", SearchOption.AllDirectories)[0];
+                File.Copy(bin, ffmpegPath, overwrite: true);
+                MakeExecutable(ffmpegPath);
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                ExtractTarXz(archivePath, tempDir);
+                var bin = Directory.GetFiles(tempDir, "ffmpeg", SearchOption.AllDirectories)[0];
+                File.Copy(bin, ffmpegPath, overwrite: true);
+                MakeExecutable(ffmpegPath);
             }
 
-            return true;
+            Directory.Delete(tempDir, recursive: true);
+            CheckFFMPEG();
         }
         #endregion
 
@@ -391,6 +467,7 @@ namespace MusicMetaWriter_CP.ViewModels
         private async Task LoadFilesWithProgressAsync(string[] files)
         {
             IsLoading = true;
+            ShowProgress = true;
             LoadStatus = "Loading files... (0 / " + files.Length + ")";
             LoadProgress = 0;
 
@@ -405,6 +482,7 @@ namespace MusicMetaWriter_CP.ViewModels
             } finally
             {
                 IsLoading = false;
+                ShowProgress = false;
                 LoadStatus = "";
                 LoadProgress = 0;
             }
@@ -671,6 +749,7 @@ namespace MusicMetaWriter_CP.ViewModels
             var result = await box.ShowAsync();
 
             IsLoading = true;
+            ShowProgress = true;
             LoadProgress = 0;
 
             if (result == "Key")
@@ -692,9 +771,17 @@ namespace MusicMetaWriter_CP.ViewModels
                 finally
                 {
                     IsLoading = false;
+                    ShowProgress = false;
                     LoadProgress = 100;
                 }
             }
+        }
+
+        [RelayCommand]
+        public async Task EnsureFfmpegAsync()
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(ffmpegPath)!);
+            await DownloadFfmpegAsync();
         }
         #endregion
 

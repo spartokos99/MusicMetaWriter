@@ -11,7 +11,7 @@
         x:Class="MusicMetaWriter_CP.Views.MainWindow"
         x:DataType="viewmodels:MainWindowViewModel"
         Title="MusicMetaWriter"
-        MinWidth="1100" MinHeight="1000"
+        MinWidth="1100" MinHeight="1100"
         Background="{DynamicResource ThemeBackgroundBrush}"
         Icon="">
 
@@ -41,36 +41,55 @@
                 <TextBlock Text="|" Foreground="{DynamicResource ThemeForegroundMidBrush}" VerticalAlignment="Center" Margin="8,0"/>
 				<Button Content="Advanced Settings" VerticalAlignment="Center" HorizontalAlignment="Right" Command="{Binding OpenAdvancedSettingsCommand}" />
             </StackPanel>
-            
         </Grid>
-
+        
         <!-- Bottom Bar -->
-        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" Margin="12,10" HorizontalAlignment="Right">
-            <!-- Progress Bar + Status -->
-            <TextBlock Text="{Binding LoadStatus}"
-                       VerticalAlignment="Center"
-                       IsVisible="{Binding IsLoading}" />
+        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto">
+            <Border Grid.ColumnSpan="2" CornerRadius="20" Effect="blur(10)" Margin="15,7" BoxShadow="0 10 20 0 #60000000" Opacity="0.6">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                        <GradientStop Color="#33FFFFFF" Offset="0" />
+                        <GradientStop Color="#10FFFFFF" Offset="1" />
+                    </LinearGradientBrush>
+                </Border.Background>
+            </Border>
+
+			<StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left" Margin="30,15" Opacity="0.5">
+				<Button Content="Download FFMPEG !" 
+                        IsVisible="{Binding !FfmpegFound}" IsEnabled="{Binding !FfmpegFound}"
+                        Command="{Binding EnsureFfmpegCommand}"
+                        CornerRadius="20"
+                        FontWeight="Bold" Background="OrangeRed" />
+
+                <!-- Progress Bar + Status -->
+                <TextBlock Text="{Binding LoadStatus}"
+                           VerticalAlignment="Center" Foreground="{DynamicResource ThemeForegroundMid}"
+                           IsVisible="{Binding IsLoading}" />
             
-            <ProgressBar Value="{Binding LoadProgress}"
-                         Width="300"
-                         Height="10"
-                         IsVisible="{Binding IsLoading}" />
+                <ProgressBar Value="{Binding LoadProgress}"
+                             Width="300"
+                             Height="10"
+                             IsVisible="{Binding ShowProgress}" />
+            </StackPanel>
 
-            <TextBlock Text="|" Foreground="{DynamicResource ThemeForegroundMidBrush}" VerticalAlignment="Center" Margin="8,0"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" Margin="30,10" HorizontalAlignment="Right">
+                <TextBlock Text="|" Foreground="{DynamicResource ThemeForegroundMidBrush}" VerticalAlignment="Center" Margin="8,0"/>
 
-            <!-- Export Formats -->
-            <CheckBox Content="MP3" IsChecked="{Binding Export_mp3}" />
-            <CheckBox Content="WAV" IsChecked="{Binding Export_wav}" />
-            <CheckBox Content="FLAC" IsChecked="{Binding Export_flac}" />
-            <CheckBox Content="AIFF" IsChecked="{Binding Export_aiff}" />
+                <!-- Export Formats -->
+                <CheckBox Content="MP3" IsChecked="{Binding Export_mp3}" />
+                <CheckBox Content="WAV" IsChecked="{Binding Export_wav}" />
+                <CheckBox Content="FLAC" IsChecked="{Binding Export_flac}" />
+                <CheckBox Content="AIFF" IsChecked="{Binding Export_aiff}" />
 
-            <TextBlock Text="|" Foreground="{DynamicResource ThemeForegroundMidBrush}" VerticalAlignment="Center" Margin="8,0"/>
+                <TextBlock Text="|" Foreground="{DynamicResource ThemeForegroundMidBrush}" VerticalAlignment="Center" Margin="8,0"/>
 
-            <!-- Actions -->
-            <Button Content="Open Log Folder" Command="{Binding OpenLogFolderCommand}" />
-            <Button Content="Generate MP4" />
-            <Button Content="Export" />
-        </StackPanel>
+                <!-- Actions -->
+                <Button Content="Open Log Folder" Command="{Binding OpenLogFolderCommand}" />
+                <Button Content="Generate MP4" />
+                <Button Content="Export" />
+            </StackPanel>
+        </Grid>
+        
 
         <!-- Main Content -->
         <Grid ColumnDefinitions="Auto, *">
