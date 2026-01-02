@@ -13,6 +13,7 @@
         Title="MusicMetaWriter"
         MinWidth="1100" MinHeight="1100"
         Background="{DynamicResource ThemeBackgroundBrush}"
+        WindowStartupLocation="CenterScreen"
         Icon="">
 
     <Window.Resources>
@@ -86,7 +87,7 @@
                 <!-- Actions -->
                 <Button Content="Open Log Folder" Command="{Binding OpenLogFolderCommand}" />
                 <Button Content="Generate MP4" />
-                <Button Content="Export" />
+                <Button Content="Export" Command="{Binding StartExportCommand}" />
             </StackPanel>
         </Grid>
         
@@ -113,9 +114,13 @@
                     <controls:NotificationMessageContainer Manager="{Binding NotificationManager}" />
 
                     <!-- Loudness Normalization -->
-                    <StackPanel Orientation="Vertical" Spacing="4" Margin="0,0,0,20">
+                    <StackPanel Orientation="Vertical" Spacing="8" Margin="0,0,0,20">
                         <TextBlock Text="Loudness Normalization" FontWeight="SemiBold" />
-                        <CheckBox Content="Enable" IsChecked="{Binding Use_ln}" />
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Stretch" Spacing="8">
+                            <CheckBox Content="Enable" IsChecked="{Binding Use_ln}" />
+                            <ComboBox SelectedIndex="0" IsEnabled="{Binding Use_ln}" ItemsSource="{Binding LnMethods}" SelectedValue="{Binding Ln_method}" />
+                        </StackPanel>
+                        
 
                         <Border IsEnabled="{Binding Use_ln}" Background="Transparent">
                             <StackPanel Orientation="Vertical" Spacing="5">

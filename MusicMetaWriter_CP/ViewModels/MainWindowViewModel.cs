@@ -18,12 +18,15 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using Windows.Storage.Pickers;
+using Windows.UI.ViewManagement;
 using Bitmap = Avalonia.Media.Imaging.Bitmap;
 using Icon = MsBox.Avalonia.Enums.Icon;
 
@@ -52,7 +55,9 @@ namespace MusicMetaWriter_CP.ViewModels
 
         string logDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
         public static string ffmpegPath =>
-            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ffmpeg", RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "ffmpeg.exe" : "ffmpeg");
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ffmpeg", RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "ffmpeg.exe" : "ffmpeg").ToString();
+
+        public bool IsLoudnormSelected => Ln_method == "loudnorm";
         #endregion
 
         #region ObservableProperties
@@ -60,6 +65,7 @@ namespace MusicMetaWriter_CP.ViewModels
         [ObservableProperty] private ObservableCollection<TrackModel> _backup = new();
 
         [ObservableProperty] private ObservableCollection<int> _convertToBitItems = new ObservableCollection<int> { 24, 16 };
+        [ObservableProperty] private ObservableCollection<string> _lnMethods = new ObservableCollection<string> { "loudnorm", "replaygain" };
 
         [ObservableProperty] private bool ffmpegFound = false;
 
@@ -74,6 +80,7 @@ namespace MusicMetaWriter_CP.ViewModels
         [ObservableProperty] private bool export_aiff;
 
         [ObservableProperty] private bool use_ln;
+        [ObservableProperty] private string? ln_method;
         [ObservableProperty] private double ln_target_i;
         [ObservableProperty] private double ln_target_tpeak;
         [ObservableProperty] private double ln_target_lu;
@@ -118,6 +125,7 @@ namespace MusicMetaWriter_CP.ViewModels
                 Export_aiff = localSettings.export_aiff;
 
                 Use_ln = localSettings.use_ln;
+                Ln_method = localSettings.ln_method;
                 Ln_target_i = localSettings.ln_target_i;
                 Ln_target_tpeak = localSettings.ln_target_tpeak;
                 Ln_target_lu = localSettings.ln_target_lu;
@@ -405,6 +413,7 @@ namespace MusicMetaWriter_CP.ViewModels
             localSettings.export_flac = Export_flac;
             localSettings.export_aiff = Export_aiff;
             localSettings.use_ln = Use_ln;
+            localSettings.ln_method = Ln_method;
             localSettings.ln_target_i = Ln_target_i;
             localSettings.ln_target_tpeak = Ln_target_tpeak;
             localSettings.ln_target_lu = Ln_target_lu;
@@ -782,6 +791,238 @@ namespace MusicMetaWriter_CP.ViewModels
         {
             Directory.CreateDirectory(Path.GetDirectoryName(ffmpegPath)!);
             await DownloadFfmpegAsync();
+        }
+
+        [RelayCommand]
+        public async Task StartExport()
+        {
+            #region Open Folder Dialog
+            mainWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+                ? desktop.MainWindow
+                : null;
+
+            if (mainWindow?.StorageProvider is null) return;
+
+            var options = new FolderPickerOpenOptions
+            {
+                Title = "Select output folder",
+                AllowMultiple = false
+            };
+
+            var result = await mainWindow?.StorageProvider.OpenFolderPickerAsync(options)!;
+            var selectedFolder = result?.FirstOrDefault();
+            if (selectedFolder is null) return;
+
+            string? outputPath = selectedFolder.TryGetLocalPath();
+            if(string.IsNullOrEmpty(outputPath))
+            {
+                outputPath = selectedFolder.Name;
+            }
+            #endregion
+
+            #region Error Handling
+            if (Tracks.Count == 0)
+            {
+                var msg = MessageBoxManager.GetMessageBoxStandard(new MessageBoxStandardParams
+                {
+                    CanResize = false,
+                    ContentHeader = "No tracks loaded",
+                    ContentTitle = "Error",
+                    ContentMessage = "You have no track(s) loaded.",
+                    ShowInCenter = true,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                    ButtonDefinitions = ButtonEnum.Ok,
+                    SizeToContent = SizeToContent.WidthAndHeight
+                });
+                await msg.ShowAsync();
+                return;
+            }
+            if(GetSelectedFormats() is null || GetSelectedFormats().Length == 0)
+            {
+                var msg = MessageBoxManager.GetMessageBoxStandard(new MessageBoxStandardParams
+                {
+                    CanResize = false,
+                    ContentHeader = "No export formats selected.",
+                    ContentTitle = "Error",
+                    ContentMessage = "Please select at least one output format.",
+                    ShowInCenter = true,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                    ButtonDefinitions = ButtonEnum.Ok,
+                    SizeToContent = SizeToContent.WidthAndHeight
+                });
+                await msg.ShowAsync();
+                return;
+            }
+            #endregion
+
+            foreach (TrackModel track in Tracks)
+            {
+                string inputPath = track.Path!;
+                string? baseFileName = Path.GetFileNameWithoutExtension(inputPath);
+                string baseStatus = "[" + (track.TrackName ?? baseFileName) + "]";
+
+                #region Apply pattern on filename
+                if(!Keep_filename)
+                {
+                    baseFileName = Fn_pattern;
+                    baseFileName = baseFileName?.Replace("%number%", track?.TrackNumber.ToString());
+                    baseFileName = baseFileName?.Replace("%title%", track?.TrackName);
+                    baseFileName = baseFileName?.Replace("%album%", track?.Album);
+                    baseFileName = baseFileName?.Replace("%artists%", track?.Artists);
+                    baseFileName = baseFileName?.Replace("%bpm%", track?.Bpm.ToString());
+                    baseFileName = baseFileName?.Replace("%key%", track?.Key);
+
+                    string[] replaceables = { "/", ":", ";", "\"", "\'", "^", "!" };
+                    foreach (string character in replaceables)
+                    {
+                        baseFileName = baseFileName?.Replace(character, "_");
+                    }
+                }
+                #endregion
+
+                foreach (string format in GetSelectedFormats())
+                {
+                    #region Output Path / Create sub-directory
+                    string? finalOutputPath = null;
+                    if (Cr_subdirectory)
+                    {
+                        finalOutputPath = Path.Combine(outputPath, baseFileName ?? "error");
+                    }
+
+                    Directory.CreateDirectory(finalOutputPath ?? outputPath);
+                    #endregion
+
+                    string outputFilePath = Path.Combine(finalOutputPath ?? outputPath, $"{baseFileName}.{format}");
+                    string filter = "", formatargs = "", metadata = "", cover = "";
+
+                    #region Loudness Normalization
+                    if (Use_ln)
+                    {
+                        if(Ln_method == "loudnorm")
+                        {
+                            filter = $"-af loudnorm=I={Ln_target_i.ToString(CultureInfo.InvariantCulture)}" +
+                                        $":TP={Ln_target_tpeak.ToString(CultureInfo.InvariantCulture)}" +
+                                        $":LRA={Ln_target_lu.ToString(CultureInfo.InvariantCulture)}";
+                        } else if(Ln_method == "replaygain")
+                        {
+                            filter = "-af replaygain";
+                        }
+                    }
+                    #endregion
+
+                    #region Format specific args
+                    switch (format.ToLower())
+                    {
+                        case "mp3":
+                            formatargs = " -c:a libmp3lame -b:a 320k -write_id3v2 1 -id3v2_version 3";
+                            break;
+
+                        case "wav":
+                            // PCM LE mit gleicher Bit-Tiefe
+                            if (track?.Bits_per_sample == 16)
+                                formatargs = " -c:a pcm_s16le";
+                            else if (track?.Bits_per_sample == 24)
+                                formatargs = " -c:a pcm_s24le";
+                            else if (track?.Bits_per_sample == 32)
+                                formatargs = " -c:a pcm_s32le";
+                            else
+                                formatargs = " -c:a pcm_s16le"; // Default fallback
+
+                            formatargs += $" -ar {track?.Sample_rate}"; // SampleRate anpassen
+                            break;
+
+                        case "flac":
+                            // FLAC unterstützt Bit-Tiefe automatisch, aber wir können SampleRate setzen
+                            formatargs = $" -ar {track?.Sample_rate}";
+                            break;
+
+                        case "aiff":
+                            // AIFF mit gleicher Bit-Tiefe
+                            if (track?.Bits_per_sample == 16)
+                                formatargs = " -c:a pcm_s16be";
+                            else if (track?.Bits_per_sample == 24)
+                                formatargs = " -c:a pcm_s24be";
+                            else if (track?.Bits_per_sample == 32)
+                                formatargs = " -c:a pcm_s32be";
+                            else
+                                formatargs = " -c:a pcm_s16be"; // Default fallback
+
+                            formatargs += $" -ar {track?.Sample_rate} -write_id3v2 1"; // SampleRate anpassen
+                            break;
+                    }
+                    #endregion
+
+                    #region Metadata
+                    var backupItem = Backup.First(b => b.Path == track?.Path);
+                    if (track?.TrackNumber != backupItem.TrackNumber)
+                    {
+                        metadata += $"-metadata track=\"{track?.TrackNumber}\" ";
+                    }
+                    if (track?.TrackName != backupItem.TrackName)
+                    {
+                        metadata += $"-metadata title=\"{track?.TrackName}\" ";
+                    }
+                    if (track?.Album != backupItem.Album)
+                    {
+                        metadata += $"-metadata album=\"{track?.Album}\" ";
+                    }
+                    if (track?.Artists != backupItem.Artists)
+                    {
+                        metadata += $"-metadata artist=\"{track?.Artists}\" ";
+                    }
+                    if (track?.Bpm != backupItem.Bpm || format == "flac")
+                    {
+                        metadata += $"-metadata BPM=\"{track?.Bpm}\" ";
+                        metadata += $"-metadata TBPM=\"{track?.Bpm}\" ";
+                        metadata += format == "aiff" ? $"-metadata com.apple.iTunes:BPM=\"{track?.Bpm}\" " : "";
+
+                    }
+                    if (track?.Key != backupItem.Key || format == "flac")
+                    {
+                        metadata += $"-metadata TKEY=\"{track?.Key}\" ";
+                        metadata += $"-metadata INITIALKEY=\"{track?.Key}\" ";
+                        metadata += format == "aiff" ? $"-metadata com.apple.iTunes:INITIALKEY=\"{track?.Key}\" " : "";
+                    }
+                    #endregion
+
+                    #region Cover
+                    if (newCoverList.ContainsKey(track?.Path!))
+                    {
+                        var newCover = newCoverList[track?.Path!];
+
+                        if(backupItem.CoverImage != newCover && format != "wav")
+                        {
+                            string tempCoverPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".jpg");
+                            newCover?.Save(tempCoverPath);
+
+                            cover = $"-i \"{tempCoverPath}\" -map 0:a -map 1:v -c:v mjpeg "
+                                + (format == "flac" ? "-disposition:v attached_pic" : "")
+                                + " -metadata:s:v title=\"Cover\" -metadata:s:v comment=\"Cover\" ";
+                        }
+                    }
+                    #endregion
+
+                    string args = $"-y -i \"{track?.Path!}\" {cover} {filter} {formatargs} {metadata} \"{outputFilePath}\"";
+
+                    var process = new Process
+                    {
+                        StartInfo = new ProcessStartInfo
+                        {
+                            FileName = ffmpegPath,
+                            Arguments = args,
+                            RedirectStandardError = true,
+                            RedirectStandardOutput = true,
+                            UseShellExecute = false,
+                            CreateNoWindow = true
+                        }
+                    };
+
+                    process.Start();
+                    process.BeginOutputReadLine();
+                    process.BeginErrorReadLine();
+                    process.WaitForExit();
+                }
+            }
         }
         #endregion
 

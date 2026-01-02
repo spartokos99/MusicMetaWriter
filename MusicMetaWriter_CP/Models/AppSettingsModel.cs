@@ -14,6 +14,7 @@ namespace MusicMetaWriter.Models
         public bool export_aiff { get; set; } = true;
 
         public bool use_ln { get; set; } = false;
+        public string? ln_method { get; set; } = "loudnorm";
         public double ln_target_i { get; set; } = -16;
         public double ln_target_tpeak { get; set; } = -1.5;
         public double ln_target_lu { get; set; } = 11;
@@ -68,6 +69,7 @@ namespace MusicMetaWriter.Models
                 current.export_flac = this.export_flac;
                 current.export_aiff = this.export_aiff;
                 current.use_ln = this.use_ln;
+                current.ln_method = this.ln_method;
                 current.ln_target_i = this.ln_target_i;
                 current.ln_target_tpeak = this.ln_target_tpeak;
                 current.ln_target_lu = this.ln_target_lu;
