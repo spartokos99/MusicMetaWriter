@@ -1,10 +1,9 @@
-﻿# 🎵 Music Meta Writer CP
+﻿# 🎵 Music Meta Writer
 
 **A modern, cross-platform audio batch exporter/converter & metadata editor**  
 Built with **Avalonia UI** + **FFmpeg** – Clean. Fast. Beautiful.
 
-![App Screenshot](https://via.placeholder.com/800x450/222/eee?text=Music+Meta+Writer+Screenshot)  
-*(Replace this with a real screenshot of your app!)*
+![App Screenshot](https://i.imgur.com/StHNiBw.png)
 
 ## ✨ Features
 
