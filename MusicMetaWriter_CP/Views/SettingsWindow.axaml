@@ -59,8 +59,8 @@
         <!-- Bottom -->
         <Grid DockPanel.Dock="Bottom" Margin="20">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Bottom" Spacing="8">
-				<Button Content="Import Config" />
-                <Button Content="Export Config" />
+				<Button Content="Import Config" IsVisible="False" />
+                <Button Content="Export Config" IsVisible="False" />
             </StackPanel>
 
 			<StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom" Spacing="8">

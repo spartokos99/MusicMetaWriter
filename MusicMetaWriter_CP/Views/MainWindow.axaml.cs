@@ -25,10 +25,10 @@ namespace MusicMetaWriter_CP.Views
             {
                 vm.MainDataGrid = dg;
 
-                // init settings
+                vm.PrepareLogs();
+
                 vm.localSettings = AppSettingsModel.Load();
                 vm.LoadSettings();
-                vm.PrepareLogs();
 
                 vm.CheckFFMPEG();
             }

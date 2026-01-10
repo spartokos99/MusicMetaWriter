@@ -141,7 +141,7 @@
                         <TextBlock Text="File Options" FontWeight="SemiBold" />
                         <CheckBox Content="Create sub-directory for each track" IsChecked="{Binding Cr_subdirectory}" />
                         <StackPanel Orientation="Horizontal" Spacing="10">
-                            <CheckBox Content="Convert 32bit to:" IsChecked="{Binding ConvertBit}" />
+                            <CheckBox Content="Convert to:" IsChecked="{Binding ConvertBit}" />
                             <ComboBox SelectedIndex="0"
                                         ItemsSource="{Binding ConvertToBitItems}"
                                         SelectedValue="{Binding ConvertToBit}"
