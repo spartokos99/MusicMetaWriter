@@ -21,9 +21,15 @@ Built with **Avalonia UI** + **FFmpeg** – Clean. Fast. Beautiful.
 
 <!-- You can add 2–4 nice screenshots here later -->
 
-| Main Window                          | Light Theme                   | Advanced Settings                    | Batch Fill                    |
-|--------------------------------------|--------------------------------------|--------------------------------------|
-| ![Main](https://i.imgur.com/StHNiBw.png) | ![Light Theme](https://i.imgur.com/lyDdQBj.png) | ![Advanced Settings](https://i.imgur.com/SXTACgX.png) | ![Batch Fill](https://i.imgur.com/1LmLFSC.png) |
+<p align="center">
+  <img src="https://i.imgur.com/StHNiBw.png" width="45%" alt="Main Window"/>
+  <img src="https://i.imgur.com/lyDdQBj.png" width="45%" alt="Light Theme"/>
+</p>
+
+<p align="center">
+  <img src="https://i.imgur.com/SXTACgX.png" width="45%" alt="Advanced Settings"/>
+  <img src="https://i.imgur.com/1LmLFSC.png" width="45%" alt="Batch Fill"/>
+</p>
 
 ## 🚀 Quick Start
 
