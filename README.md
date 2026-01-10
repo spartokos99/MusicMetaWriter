@@ -21,9 +21,9 @@ Built with **Avalonia UI** + **FFmpeg** – Clean. Fast. Beautiful.
 
 <!-- You can add 2–4 nice screenshots here later -->
 
-| Main Window                          | Export in Progress                   | Cover Replacement                    |
+| Main Window                          | Light Theme                   | Advanced Settings                    | Batch Fill                    |
 |--------------------------------------|--------------------------------------|--------------------------------------|
-| ![Main](https://via.placeholder.com/400x225) | ![Export](https://via.placeholder.com/400x225) | ![Cover](https://via.placeholder.com/400x225) |
+| ![Main](https://i.imgur.com/StHNiBw.png) | ![Light Theme](https://i.imgur.com/lyDdQBj.png) | ![Advanced Settings](https://i.imgur.com/SXTACgX.png) | ![Batch Fill](https://i.imgur.com/1LmLFSC.png) |
 
 ## 🚀 Quick Start
 
