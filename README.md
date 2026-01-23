@@ -7,7 +7,7 @@ Built with **Avalonia UI** + **FFmpeg** – Clean. Fast. Beautiful.
 
 ## ✨ Features
 
-- 🎧 **Batch export** to MP3 · WAV · FLAC · AIFF  
+- 🎧 **Batch export** to MP3 · WAV · FLAC · AIFF · MP4 (Cover + Custom Media)
 - 🔊 **Loudness normalization** (EBU R128 loudnorm + ReplayGain)  
 - ⚙️ **Bit-depth conversion** (16/24-bit with smart dithering)  
 - 🖼️ **Cover art replacement** (single or bulk)  
