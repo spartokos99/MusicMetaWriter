@@ -1,4 +1,4 @@
-
+﻿
 
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:controls="using:Avalonia.Notification.Controls"
@@ -77,6 +77,15 @@
                 <TextBlock Text="|" Foreground="{DynamicResource ThemeForegroundMidBrush}" VerticalAlignment="Center" Margin="8,0"/>
 
                 <!-- Export Formats -->
+                <CheckBox Content="MP4" IsChecked="{Binding Export_mp4}" />
+                <ComboBox SelectedIndex="{Binding Video_method}">
+					<ComboBoxItem Content="Cover" />
+                    <ComboBoxItem Content="Custom" />
+                </ComboBox>
+                <Button Content="..." IsEnabled="{Binding Export_mp4}" Command="{Binding PickVideoMediaCommand}" />
+
+                <TextBlock Text="|" Foreground="{DynamicResource ThemeForegroundMidBrush}" VerticalAlignment="Center" Margin="8,0"/>
+
                 <CheckBox Content="MP3" IsChecked="{Binding Export_mp3}" />
                 <CheckBox Content="WAV" IsChecked="{Binding Export_wav}" />
                 <CheckBox Content="FLAC" IsChecked="{Binding Export_flac}" />
@@ -86,7 +95,6 @@
 
                 <!-- Actions -->
                 <Button Content="Open Log Folder" Command="{Binding OpenLogFolderCommand}" />
-                <Button Content="Generate MP4" />
                 <Button Content="Export" Command="{Binding StartExportCommand}" />
             </StackPanel>
         </Grid>

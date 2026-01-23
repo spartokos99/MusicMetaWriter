@@ -8,10 +8,14 @@ namespace MusicMetaWriter.Models
     public class AppSettingsModel
     {
         #region App Settings
+        public bool export_mp4 { get; set; } = true;
         public bool export_mp3 { get; set; } = true;
         public bool export_wav { get; set; } = true;
         public bool export_flac { get; set; } = true;
         public bool export_aiff { get; set; } = true;
+
+        public int video_method { get; set; } = 0;
+        public string? video_path { get; set; } = "";
 
         public bool use_ln { get; set; } = false;
         public string? ln_method { get; set; } = "loudnorm";
@@ -64,10 +68,13 @@ namespace MusicMetaWriter.Models
 
             if (type == AppSettingsType.Default || type == AppSettingsType.Both)
             {
+                current.export_mp4 = this.export_mp4;
                 current.export_mp3 = this.export_mp3;
                 current.export_wav = this.export_wav;
                 current.export_flac = this.export_flac;
                 current.export_aiff = this.export_aiff;
+                current.video_method = this.video_method;
+                current.video_path = this.video_path;
                 current.use_ln = this.use_ln;
                 current.ln_method = this.ln_method;
                 current.ln_target_i = this.ln_target_i;
@@ -75,6 +82,7 @@ namespace MusicMetaWriter.Models
                 current.ln_target_lu = this.ln_target_lu;
                 current.cr_subdirectory = this.cr_subdirectory;
                 current.convertBit = this.convertBit;
+                current.convertToBit = this.convertToBit;
                 current.keep_filename = this.keep_filename;
                 current.fn_pattern = this.fn_pattern;
                 current.hidden_columns = this.hidden_columns;

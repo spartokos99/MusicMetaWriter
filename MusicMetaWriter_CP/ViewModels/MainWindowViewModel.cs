@@ -25,8 +25,14 @@ using System.Linq;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using System.Timers;
+using Un4seen.Bass;
+using Un4seen.Bass.AddOn.Fx;
+using Un4seen.Bass.Misc;
+using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.UI.ViewManagement;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using Bitmap = Avalonia.Media.Imaging.Bitmap;
 using Icon = MsBox.Avalonia.Enums.Icon;
 
@@ -51,7 +57,7 @@ namespace MusicMetaWriter_CP.ViewModels
 
         public Dictionary<string, Bitmap?> newCoverList = new Dictionary<string, Bitmap?>();
 
-        public Window? mainWindow;
+        public Avalonia.Controls.Window? mainWindow;
 
         static string logDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
         static string logFilePath = Path.Combine(logDir, "log.txt");
@@ -75,10 +81,14 @@ namespace MusicMetaWriter_CP.ViewModels
         [ObservableProperty] private bool _showProgress;
         [ObservableProperty] private bool _isLoading;
 
+        [ObservableProperty] private bool export_mp4;
         [ObservableProperty] private bool export_mp3;
         [ObservableProperty] private bool export_wav;
         [ObservableProperty] private bool export_flac;
         [ObservableProperty] private bool export_aiff;
+
+        [ObservableProperty] private int video_method;
+        [ObservableProperty] private string? video_path;
 
         [ObservableProperty] private bool use_ln;
         [ObservableProperty] private string? ln_method;
@@ -141,10 +151,14 @@ namespace MusicMetaWriter_CP.ViewModels
         {
             if (localSettings is not null && MainDataGrid is not null)
             {
+                Export_mp4 = localSettings.export_mp4;
                 Export_mp3 = localSettings.export_mp3;
                 Export_wav = localSettings.export_wav;
                 Export_flac = localSettings.export_flac;
                 Export_aiff = localSettings.export_aiff;
+
+                Video_method = localSettings.video_method;
+                Video_path = localSettings.video_path;
 
                 Use_ln = localSettings.use_ln;
                 Ln_method = localSettings.ln_method;
@@ -176,6 +190,7 @@ namespace MusicMetaWriter_CP.ViewModels
         private string[] GetSelectedFormats()
         {
             var list = new List<string>();
+            if (Export_mp4) list.Add("mp4");
             if (Export_mp3) list.Add("mp3");
             if (Export_wav) list.Add("wav");
             if (Export_flac) list.Add("flac");
@@ -840,6 +855,7 @@ namespace MusicMetaWriter_CP.ViewModels
                 SizeToContent = SizeToContent.WidthAndHeight,
                 ButtonDefinitions = new List<ButtonDefinition>
                 {
+                    new ButtonDefinition { Name = "BPM" },
                     new ButtonDefinition { Name = "Key" },
                     new ButtonDefinition { Name = "Cancel" }
                 }
@@ -862,6 +878,29 @@ namespace MusicMetaWriter_CP.ViewModels
                     //await Task.Run(() => AnalyzeKeyInBackground(SelectedTracks, progress));
 
                     LoadStatus = "Key analysis completed!";
+                }
+                catch (Exception ex)
+                {
+                    LoadStatus = $"Error: {ex.Message}";
+                }
+                finally
+                {
+                    IsLoading = false;
+                    ShowProgress = false;
+                    LoadProgress = 100;
+                }
+            } else if(result == "BPM")
+            {
+                LoadStatus = "Analyzing BPM...";
+                var progress = new Progress<double>(percent => LoadProgress = percent);
+
+                try
+                {
+                    foreach (var track in SelectedTracks)
+                    {
+                    }
+
+                    LoadStatus = "BPM Detection completed!";
                 }
                 catch (Exception ex)
                 {
@@ -1016,6 +1055,8 @@ namespace MusicMetaWriter_CP.ViewModels
                         string outputFilePath = Path.Combine(finalOutputPath ?? outputPath, $"{baseFileName}.{format}");
                         string filter = "", extraFilter = "", formatargs = "", metadata = "", cover = "";
 
+                        string pre_args = "", mp4Filter = "", mp4Input = "", tempCoverPath = null;
+
                         #region Loudness Normalization
                         if (Use_ln)
                         {
@@ -1050,6 +1091,53 @@ namespace MusicMetaWriter_CP.ViewModels
                         #region Format specific args
                         switch (format.ToLower())
                         {
+                            case "mp4":
+                                if(Video_method == 0)
+                                {
+                                    Bitmap? coverImage = null;
+
+                                    // Prefer custom cover if user replaced it
+                                    if (newCoverList.TryGetValue(track.Path!, out var customCover) && customCover != null)
+                                        coverImage = customCover;
+                                    else
+                                    {
+                                        using var tfile = TagLib.File.Create(track.Path);
+                                        coverImage = new Bitmap(new MemoryStream(tfile.Tag.Pictures[0].Data.Data));
+                                    }
+
+                                    if (coverImage != null)
+                                    {
+                                        tempCoverPath = Path.Combine(Path.GetTempPath(), $"cover_{Guid.NewGuid():N}.jpg");
+                                        coverImage.Save(tempCoverPath);
+
+                                        mp4Input = $"-loop 1 -i \"{tempCoverPath}\" ";
+
+                                        // Scale cover to 1920x1080 with letterbox/pillarbox
+                                        mp4Filter = "[0:v]scale=1920:1080:force_original_aspect_ratio=decrease," +
+                                                   "pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black[v0];";
+                                    }
+                                    else
+                                    {
+                                        // Fallback: solid color background
+                                        mp4Input = "-f lavfi -i color=c=black:s=1920x1080:d=10 ";
+                                        mp4Filter = "[0:v]null[v0];";
+                                    }
+                                } else if(Video_method == 1 && !string.IsNullOrEmpty(Video_path))
+                                {
+                                    mp4Input = $"-stream_loop -1 -i \"{Video_path}\" ";
+                                    mp4Filter = "[0:v]scale=1920:1080:force_original_aspect_ratio=decrease," +
+                                               "pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black[v0];";
+                                } else
+                                {
+                                    mp4Input = "-f lavfi -i color=c=black:s=1920x1080:d=10 ";
+                                    mp4Filter = "[0:v]null[v0];";
+                                }
+
+                                formatargs = "-c:v libx264 -preset medium -crf 23 -pix_fmt yuv420p " +
+                                                "-c:a aac -b:a 192k -shortest -movflags +faststart";
+
+                                break;
+
                             case "mp3":
                                 formatargs = " -c:a libmp3lame -b:a 320k -write_id3v2 1 -id3v2_version 3";
                                 break;
@@ -1150,7 +1238,7 @@ namespace MusicMetaWriter_CP.ViewModels
 
                             if (backupItem.CoverImage != newCover && format != "wav")
                             {
-                                string tempCoverPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".jpg");
+                                tempCoverPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".jpg");
                                 newCover?.Save(tempCoverPath);
 
                                 cover = $"-i \"{tempCoverPath}\" -map 0:a -map 1:v -c:v mjpeg "
@@ -1161,28 +1249,48 @@ namespace MusicMetaWriter_CP.ViewModels
                         #endregion
 
                         #region Build Args
-                        string filterPart = "";
-                        if (Use_ln)
-                        {
-                            filterPart = filter;
-                        }
+                        string args = "";
 
-                        if (!string.IsNullOrEmpty(extraFilter))
+                        if(format.ToLower() == "mp4")
                         {
-                            if (!string.IsNullOrEmpty(filterPart))
-                                filterPart += extraFilter;
-                            else
-                                filterPart = "-af" + extraFilter.TrimStart(',');
-                        }
+                            string filterComplex = mp4Filter + "[1:a]anull[a]";
 
-                        string pre_args = $"{cover} {filterPart} {formatargs} {metadata}";
-                        string args = $"-y -i \"{track?.Path!}\" " + pre_args + $" \"{outputFilePath}\"";
+                            args = $"-y {mp4Input}" +                              // video input first
+                                   $"-i \"{track?.Path!}\" " +                     // audio input second
+                                   $"-filter_complex \"{filterComplex}\" " +
+                                   $"-map \"[v0]\" " +                             // output video from filter
+                                   $"-map \"[a]\" " +                              // output audio
+                                   $"{formatargs} " +                              // encoding settings
+                                   $"\"{outputFilePath}\"";
+                        } else
+                        {
+                            string filterPart = "";
+                            if (Use_ln)
+                                filterPart = filter;
+
+                            if (!string.IsNullOrEmpty(extraFilter))
+                            {
+                                if (!string.IsNullOrEmpty(filterPart))
+                                    filterPart += extraFilter;
+                                else
+                                    filterPart = "-af" + extraFilter.TrimStart(',');
+                            }
+
+                            pre_args = $"{cover} {filterPart} {formatargs} {metadata}";
+                            args = $"-y -i \"{track?.Path!}\" " + pre_args + $" \"{outputFilePath}\"";
+                        }
                         #endregion
 
                         WriteLog("> Args: " + pre_args);
 
                         LoadStatus = $"Exporting {track?.TrackName ?? baseFileName} → {format.ToUpper()}";
                         bool success = await RunFfmpegAsync(args, outputFilePath);
+
+                        if (tempCoverPath != null && File.Exists(tempCoverPath))
+                        {
+                            try { File.Delete(tempCoverPath); } catch { }
+                        }
+
                         completedOperations++;
 
                         LoadProgress = (double)completedOperations / totalOperations * 100;
@@ -1207,6 +1315,55 @@ namespace MusicMetaWriter_CP.ViewModels
                 LoadProgress = 0;
                 LoadStatus = "";
             }
+        }
+
+        [RelayCommand]
+        public async Task PickVideoMedia()
+        {
+            var mainWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+               ? desktop.MainWindow
+               : null;
+
+            if (mainWindow is null) return;
+
+            var result = await mainWindow.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "Choose Background Media",
+                AllowMultiple = false,
+                FileTypeFilter = new[]
+                {
+                    new FilePickerFileType("Image Files")
+                    {
+                        Patterns = new[] { "*.jpg", "*.png" },
+                        AppleUniformTypeIdentifiers = new[] { "public.image" },
+                        MimeTypes = new[] { "image/*" }
+                    },
+                    new FilePickerFileType("Video Files")
+                    {
+                        Patterns = new[] { "*.mp4", "*.mov", "*.mkv", "*.avi", "*.webm", "*.m4v" },
+                        AppleUniformTypeIdentifiers = new[]
+                        {
+                            "public.movie",
+                            "public.mpeg-4",
+                            "com.apple.quicktime-movie",
+                            "public.avi",
+                            "org.matroska.mkv",
+                            "public.video"
+                        },
+                        MimeTypes = new[] { "video/*" }
+                    }
+                }
+            });
+
+            if (result?.Count <= 0) return;
+            if (result == null) return;
+
+            var file = result.Select(sFile => sFile.Path.LocalPath).FirstOrDefault();
+
+            if (file == null) return;
+
+            Video_method = 1;
+            Video_path = file ?? "";
         }
         #endregion
 
