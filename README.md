@@ -16,6 +16,10 @@ Built with **Avalonia UI** + **FFmpeg** – Clean. Fast. Beautiful.
 - 🌙 **Dark/Light/System theme** support  
 - 📝 **Detailed logging**
 
+## ⚠️ Warning
+
+**Please be aware that I am a solo developer and this is my first Avalonia project, so bugs/errors may occur.**
+
 ## 📸 Screenshots
 
 <p align="center">
