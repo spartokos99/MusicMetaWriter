@@ -2,8 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleIconFile</key>
-    <string>mmw.icns</string>
     <key>CFBundleIdentifier</key>
     <string>com.bashcode.musicmetawriter</string>
     <key>CFBundleName</key>
@@ -13,7 +11,7 @@
     <key>LSMinimumSystemVersion</key>
     <string>10.12</string>
     <key>CFBundleExecutable</key>
-    <string>Content/macOS/MusicMetaWriter</string>
+    <string>MusicMetaWriter</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundlePackageType</key>
@@ -22,5 +20,7 @@
     <string>1.1</string>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>CFBundleIconFile</key>
+    <string>icon.icns</string>
 </dict>
 </plist>
