@@ -19,6 +19,10 @@ Built with **Avalonia UI** + **FFmpeg** – Clean. Fast. Beautiful.
 ## ⚠️ Warning
 
 **Please be aware that I am a solo developer and this is my first Avalonia project, so bugs/errors may occur.**
+> Report any crashes, weird behavior or missing features.
+> Your feedback will shape the future of this tool!
+
+Thanks for testing!
 
 ## 📸 Screenshots
 
