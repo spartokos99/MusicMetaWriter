@@ -14,8 +14,7 @@ Built with **Avalonia UI** + **FFmpeg** – Clean. Fast. Beautiful.
 - ✏️ **Metadata editor** with pattern-based filename generation  
 - 📂 **Folder & multi-file loading** with progress feedback  
 - 🌙 **Dark/Light/System theme** support  
-- 📝 **Detailed logging** + export history  
-- 🚀 **FFmpeg auto-download** on first launch (Windows/macOS/Linux)
+- 📝 **Detailed logging**
 
 ## 📸 Screenshots
 
@@ -28,14 +27,13 @@ Built with **Avalonia UI** + **FFmpeg** – Clean. Fast. Beautiful.
 
 1. Download latest release from [Releases](https://github.com/spartokos99/MusicMetaWriter/releases)
 2. Extract & run `MusicMetaWriter.exe` (Windows) / `.app` (macOS) / executable (Linux)
-3. First launch will automatically download **FFmpeg** (~35–80 MB)
-4. Load files or a folder via the buttons on the top left → start tweaking & exporting!
+3. Load files or a folder via the buttons on the top left → start tweaking & exporting!
 
 ## 🛠️ Requirements
 
-- **Windows** 10/11  
-- **macOS** 11+  
-- **Linux** (tested on Ubuntu 22.04+ / Fedora)  
+- **Windows** 10/11 (tested on Win11 x64)
+- **macOS** 12+ (tested on Tahoe 26.2 x64)
+- **Linux** (not tested - no release package yet)
 - **.NET 8.0** Desktop Runtime (usually auto-installed)
 
 ## 🏗️ Build from Source
