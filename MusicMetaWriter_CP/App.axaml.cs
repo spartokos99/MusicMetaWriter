@@ -1,5 +1,9 @@
+using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using System.Runtime.InteropServices;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
@@ -15,6 +19,7 @@ namespace MusicMetaWriter_CP
             AvaloniaXamlLoader.Load(this);
         }
 
+        [UnconditionalSuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code", Justification = "<Pending>")]
         public override void OnFrameworkInitializationCompleted()
         {
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
@@ -38,6 +43,7 @@ namespace MusicMetaWriter_CP
             base.OnFrameworkInitializationCompleted();
         }
 
+        [RequiresUnreferencedCode("Calls Avalonia.Data.Core.Plugins.BindingPlugins.DataValidators")]
         private void DisableAvaloniaDataAnnotationValidation()
         {
             // Get an array of plugins to remove
@@ -50,5 +56,29 @@ namespace MusicMetaWriter_CP
                 BindingPlugins.DataValidators.Remove(plugin);
             }
         }
+
+        #region NativeMenu
+        private void OpenAdvancedSettings(object? sender, EventArgs args)
+        {
+            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                if(desktop.MainWindow!.DataContext is MainWindowViewModel vm)
+                {
+                    vm.OpenAdvancedSettingsFunc();
+                }
+            }
+        }
+
+        private void ShowAbout(object? sender, EventArgs args)
+        {
+            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                if(desktop.MainWindow!.DataContext is MainWindowViewModel vm)
+                {
+                    vm.ShowAboutFunc();
+                }
+            }
+        }
+        #endregion
     }
 }

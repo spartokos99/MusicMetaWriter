@@ -22,7 +22,7 @@ namespace MusicMetaWriter_CP.ViewModels
         {
             get
             {
-                if(MainWindowViewModel.Instance?.newCoverList.TryGetValue(Path, out var newCover) == true)
+                if(MainWindowViewModel.Instance?.newCoverList.TryGetValue(Path!, out var newCover) == true)
                 {
                     return newCover;
                 }

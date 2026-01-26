@@ -1,3 +1,5 @@
+using System;
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using MusicMetaWriter.Models;
@@ -33,5 +35,47 @@ namespace MusicMetaWriter_CP.Views
                 vm.CheckFFMPEG();
             }
         }
+
+        #region NativeMenu
+        private void OpenFilesAsync(object? sender, EventArgs args)
+        {
+            if (DataContext is MainWindowViewModel vm)
+            {
+                vm.LoadFilesAsyncFunc();
+            }
+        }
+
+        private void OpenFolderAsync(object? sender, EventArgs args)
+        {
+            if (DataContext is MainWindowViewModel vm)
+            {
+                vm.LoadFolderAsyncFunc();
+            }
+        }
+
+        private void SaveSettings(object? sender, EventArgs args)
+        {
+            if (DataContext is MainWindowViewModel vm)
+            {
+                vm.SaveSettingsFunc();
+            }
+        }
+
+        private void ShowBatchFill(object? sender, System.EventArgs args)
+        {
+            if (DataContext is MainWindowViewModel vm)
+            {
+                vm.OpenBatchFillFunc();
+            }
+        }
+
+        private void ResetTracks(object? sender, EventArgs args)
+        {
+            if (DataContext is MainWindowViewModel vm)
+            {
+                vm.ResetTracksFunc();
+            }
+        }
+        #endregion
     }
 }

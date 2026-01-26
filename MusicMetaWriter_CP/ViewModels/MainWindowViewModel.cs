@@ -23,6 +23,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Bitmap = Avalonia.Media.Imaging.Bitmap;
@@ -51,7 +52,7 @@ namespace MusicMetaWriter_CP.ViewModels
 
         public Avalonia.Controls.Window? mainWindow;
 
-        static string logDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
+        static string logDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "BashCode", "MusicMetaWriter", "logs");
         static string logFilePath = Path.Combine(logDir, "log.txt");
         public static string ffmpegPath =>
             Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ffmpeg", RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "ffmpeg.exe" : "ffmpeg").ToString();
@@ -60,6 +61,8 @@ namespace MusicMetaWriter_CP.ViewModels
         #endregion
 
         #region ObservableProperties
+        [ObservableProperty] private string? _appVersionNumber = ("v" + Assembly.GetExecutingAssembly().GetName().Version?.ToString(3)) ?? "Unknown";
+
         [ObservableProperty] private ObservableCollection<TrackModel> _tracks = new();
         [ObservableProperty] private ObservableCollection<TrackModel> _backup = new();
 
@@ -139,6 +142,34 @@ namespace MusicMetaWriter_CP.ViewModels
                 Console.WriteLine(ex.ToString());
             }
         }
+        public void OpenLogFolderFunc()
+        {
+            try
+            {
+                ProcessStartInfo startInfo = new()
+                {
+                    FileName = logDir,
+                    UseShellExecute = true
+                };
+
+                Process.Start(startInfo);
+            } catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+            }
+        }
+
+        public void ShowAboutFunc()
+        {
+            var box = MessageBoxManager
+                .GetMessageBoxStandard(
+                    title: "About MusicMetaWriter",
+                    text: "MusicMetaWriter (" + AppVersionNumber + ") is the first AvaloniaUI project from a viennese drum and bass dj and producer called BashCode." + Environment.NewLine + Environment.NewLine + "©BashCode 2025",
+                    ButtonEnum.Ok,
+                    Icon.Info);
+
+            box.ShowAsync();
+        }
 
         public void LoadSettings()
         {
@@ -178,6 +209,58 @@ namespace MusicMetaWriter_CP.ViewModels
 
                 WriteLog("Settings loaded.");
             }
+        }
+        public void SaveSettingsFunc()
+        {
+            if (localSettings is null) localSettings = AppSettingsModel.Load();
+            
+            localSettings.export_mp3 = Export_mp3;
+            localSettings.export_wav = Export_wav;
+            localSettings.export_flac = Export_flac;
+            localSettings.export_aiff = Export_aiff;
+            localSettings.use_ln = Use_ln;
+            localSettings.ln_method = Ln_method;
+            localSettings.ln_target_i = Ln_target_i;
+            localSettings.ln_target_tpeak = Ln_target_tpeak;
+            localSettings.ln_target_lu = Ln_target_lu;
+            localSettings.cr_subdirectory = Cr_subdirectory;
+            localSettings.convertBit = ConvertBit;
+            localSettings.convertToBit = ConvertToBit;
+            localSettings.keep_filename = Keep_filename;
+            localSettings.fn_pattern = Fn_pattern;
+            localSettings.hidden_columns = GetHiddenColumns();
+
+            localSettings.Save(AppSettingsType.Default);
+            ShowNotification("Your settings have been saved.", defaultNotificationTimeSpan, "Success", NotificationType.Success);
+
+            WriteLog("Settings saved.");
+        }
+        public void OpenConfigFolder()
+        {
+            try
+            {
+                ProcessStartInfo startInfo = new()
+                {
+                    FileName = AppSettingsModel.SettingsDirectory,
+                    UseShellExecute = true
+                };
+
+                Process.Start(startInfo);
+            } catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+            }
+        }
+        public void OpenAdvancedSettingsFunc()
+        {
+            var mainWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+                ? desktop.MainWindow
+                : null;
+
+            if (mainWindow is null) return;
+
+            var settingsWindow = new SettingsWindow(mainWindow!, this, localSettings ?? AppSettingsModel.Load());
+            settingsWindow.ShowDialog(mainWindow);
         }
 
         public void SetTheme()
@@ -245,6 +328,107 @@ namespace MusicMetaWriter_CP.ViewModels
             {
                 SelectedImage = null;
             }
+        }
+        public void ResetTracksFunc()
+        {
+            if (Tracks is null) return;
+            foreach (TrackModel trackToReset in Tracks)
+            {
+                var backupTrack = Backup.FirstOrDefault(t => t.Path == trackToReset.Path);
+                if(backupTrack is null) continue;
+
+                trackToReset.TrackNumber = backupTrack.TrackNumber;
+                trackToReset.TrackName = backupTrack.TrackName;
+                trackToReset.Album = backupTrack.Album;
+                trackToReset.Artists = backupTrack.Artists;
+                trackToReset.Genre = backupTrack.Genre;
+                trackToReset.Bpm = backupTrack.Bpm;
+                trackToReset.Key = backupTrack.Key;
+                trackToReset.CoverImage = backupTrack.CoverImage;
+
+                if (newCoverList.ContainsKey(trackToReset.Path ?? ""))
+                {
+                    newCoverList.Remove(trackToReset.Path ?? "");
+                }
+
+                trackToReset.RefreshCoverDisplay();
+                trackToReset.NotifyAll();
+            }
+
+            UpdateCoverPreview();
+
+            ShowNotification("Tracks reset to original metadata.", 4, "Info", NotificationType.Information);
+        }
+
+        public void OpenBatchFillFunc()
+        {
+            var mainWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+               ? desktop.MainWindow
+               : null;
+
+            if (mainWindow is null) return;
+
+            var batchWindow = new BatchFillWindow(mainWindow, this.MainDataGrid!.Columns, SelectedTracks, Tracks);
+            batchWindow.ShowDialog(mainWindow);
+        }
+
+        public async Task LoadFilesAsyncFunc()
+        {
+            var window = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+                ? desktop.MainWindow
+                : null;
+
+            if (window == null) return;
+
+            var result = await window.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "Select Audio File(s)",
+                AllowMultiple = true,
+                FileTypeFilter = new[]
+                {
+                    new FilePickerFileType("Audio Files")
+                    {
+                        Patterns = new[] { "*.mp3", "*.wav", "*.flac", "*.aiff", "*.m4a", "*.ogg" },
+                        AppleUniformTypeIdentifiers = new[] { "public.audio" },
+                        MimeTypes = new[] { "audio/*" }
+                    }
+                }
+            });
+
+            if (result?.Count <= 0) return;
+            if (result == null) return;
+
+            var files = result.Select(storageFile => storageFile.Path.LocalPath).ToArray();
+
+            if (files.Length == 0) return;
+
+            await LoadFilesWithProgressAsync(files);
+        }
+        public async Task LoadFolderAsyncFunc()
+        {
+            var window = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+                ? desktop.MainWindow
+                : null;
+
+            if (window == null) return;
+
+            var result = await window.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            {
+                Title = "Select Folder with Audio Files",
+                AllowMultiple = false
+            });
+
+            if (result?.Count <= 0) return;
+            if (result == null) return;
+
+            var path = result[0].Path.LocalPath;
+            var files = Directory.EnumerateFiles(path, "*.*", localSettings!.search_subdirectories ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly)
+                .Where(f => supportedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
+                .ToArray();
+
+            if (files.Length == 0) return;
+
+            await LoadFilesWithProgressAsync(files);
         }
 
         private async Task GenerateTrackModelWithProgress(string[] paths, IProgress<double> progress)
@@ -499,72 +683,25 @@ namespace MusicMetaWriter_CP.ViewModels
         [RelayCommand]
         private void SaveSettings()
         {
-            if (localSettings is null) localSettings = AppSettingsModel.Load();
-            
-            localSettings.export_mp3 = Export_mp3;
-            localSettings.export_wav = Export_wav;
-            localSettings.export_flac = Export_flac;
-            localSettings.export_aiff = Export_aiff;
-            localSettings.use_ln = Use_ln;
-            localSettings.ln_method = Ln_method;
-            localSettings.ln_target_i = Ln_target_i;
-            localSettings.ln_target_tpeak = Ln_target_tpeak;
-            localSettings.ln_target_lu = Ln_target_lu;
-            localSettings.cr_subdirectory = Cr_subdirectory;
-            localSettings.convertBit = ConvertBit;
-            localSettings.convertToBit = ConvertToBit;
-            localSettings.keep_filename = Keep_filename;
-            localSettings.fn_pattern = Fn_pattern;
-            localSettings.hidden_columns = GetHiddenColumns();
-
-            localSettings.Save(AppSettingsType.Default);
-            ShowNotification("Your settings have been saved.", defaultNotificationTimeSpan, "Success", NotificationType.Success);
-
-            WriteLog("Settings saved.");
+            SaveSettingsFunc();
         }
 
         [RelayCommand]
         private void OpenAdvancedSettings()
         {
-            var mainWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
-                ? desktop.MainWindow
-                : null;
-
-            if (mainWindow is null) return;
-
-            var settingsWindow = new SettingsWindow(mainWindow!, this, localSettings ?? AppSettingsModel.Load());
-            settingsWindow.ShowDialog(mainWindow);
+            OpenAdvancedSettingsFunc();
         }
 
         [RelayCommand]
         private void OpenBatchFill()
         {
-            var mainWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
-               ? desktop.MainWindow
-               : null;
-
-            if (mainWindow is null) return;
-
-            var batchWindow = new BatchFillWindow(mainWindow, this.MainDataGrid!.Columns, SelectedTracks, Tracks);
-            batchWindow.ShowDialog(mainWindow);
+            OpenBatchFillFunc();
         }
 
         [RelayCommand]
         private void OpenLogFolder()
         {
-            try
-            {
-                ProcessStartInfo startInfo = new()
-                {
-                    FileName = logDir,
-                    UseShellExecute = true
-                };
-
-                Process.Start(startInfo);
-            } catch (Exception ex)
-            {
-                Console.WriteLine(ex.ToString());
-            }
+            OpenLogFolderFunc();
         }
 
         [RelayCommand]
@@ -595,63 +732,13 @@ namespace MusicMetaWriter_CP.ViewModels
         [RelayCommand]
         private async Task LoadFilesAsync()
         {
-            var window = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
-                ? desktop.MainWindow
-                : null;
-
-            if (window == null) return;
-
-            var result = await window.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-            {
-                Title = "Select Audio File(s)",
-                AllowMultiple = true,
-                FileTypeFilter = new[]
-                {
-                    new FilePickerFileType("Audio Files")
-                    {
-                        Patterns = new[] { "*.mp3", "*.wav", "*.flac", "*.aiff", "*.m4a", "*.ogg" },
-                        AppleUniformTypeIdentifiers = new[] { "public.audio" },
-                        MimeTypes = new[] { "audio/*" }
-                    }
-                }
-            });
-
-            if (result?.Count <= 0) return;
-            if (result == null) return;
-
-            var files = result.Select(storageFile => storageFile.Path.LocalPath).ToArray();
-
-            if (files.Length == 0) return;
-
-            await LoadFilesWithProgressAsync(files);
+            await LoadFilesAsyncFunc();
         }
 
         [RelayCommand]
         private async Task LoadFolderAsync()
         {
-            var window = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
-                ? desktop.MainWindow
-                : null;
-
-            if (window == null) return;
-
-            var result = await window.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-            {
-                Title = "Select Folder with Audio Files",
-                AllowMultiple = false
-            });
-
-            if (result?.Count <= 0) return;
-            if (result == null) return;
-
-            var path = result[0].Path.LocalPath;
-            var files = Directory.EnumerateFiles(path, "*.*", localSettings!.search_subdirectories ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly)
-                .Where(f => supportedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
-                .ToArray();
-
-            if (files.Length == 0) return;
-
-            await LoadFilesWithProgressAsync(files);
+            await LoadFolderAsyncFunc();
         }
 
         [RelayCommand]
@@ -663,7 +750,7 @@ namespace MusicMetaWriter_CP.ViewModels
             List<string> paths = new List<string>();
             foreach (var track in SelectedTracks)
             {
-                paths.Add(track.Path);
+                paths.Add(track!.Path!);
             }
 
             var box = MessageBoxManager
@@ -679,12 +766,12 @@ namespace MusicMetaWriter_CP.ViewModels
             {
                 foreach(var track in SelectedTracks)
                 {
-                    if (newCoverList.ContainsKey(track.Path))
+                    if (newCoverList.ContainsKey(track!.Path!))
                     {
-                        newCoverList[track.Path] = null;
+                        newCoverList[track!.Path!] = null;
                     } else
                     {
-                        newCoverList.Add(track.Path, null);
+                        newCoverList.Add(track!.Path!, null);
                     }
 
                     track.RefreshCoverDisplay();
@@ -704,7 +791,7 @@ namespace MusicMetaWriter_CP.ViewModels
             List<string> paths = new List<string>();
             foreach (var track in SelectedTracks)
             {
-                paths.Add(track.Path);
+                paths.Add(track!.Path!);
             }
 
             var window = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
@@ -755,12 +842,12 @@ namespace MusicMetaWriter_CP.ViewModels
             {
                 foreach(var item in SelectedTracks)
                 {
-                    if (newCoverList.ContainsKey(item.Path))
+                    if (newCoverList.ContainsKey(item!.Path!))
                     {
-                        newCoverList[item.Path] = newCover;
+                        newCoverList[item!.Path!] = newCover;
                     } else
                     {
-                        newCoverList.Add(item.Path, newCover);
+                        newCoverList.Add(item!.Path!, newCover);
                     }
 
                     item.RefreshCoverDisplay();
@@ -801,33 +888,7 @@ namespace MusicMetaWriter_CP.ViewModels
         [RelayCommand]
         public void ResetTracks()
         {
-            if (Tracks is null) return;
-            foreach (TrackModel trackToReset in Tracks)
-            {
-                var backupTrack = Backup.FirstOrDefault(t => t.Path == trackToReset.Path);
-                if(backupTrack is null) continue;
-
-                trackToReset.TrackNumber = backupTrack.TrackNumber;
-                trackToReset.TrackName = backupTrack.TrackName;
-                trackToReset.Album = backupTrack.Album;
-                trackToReset.Artists = backupTrack.Artists;
-                trackToReset.Genre = backupTrack.Genre;
-                trackToReset.Bpm = backupTrack.Bpm;
-                trackToReset.Key = backupTrack.Key;
-                trackToReset.CoverImage = backupTrack.CoverImage;
-
-                if (newCoverList.ContainsKey(trackToReset.Path ?? ""))
-                {
-                    newCoverList.Remove(trackToReset.Path ?? "");
-                }
-
-                trackToReset.RefreshCoverDisplay();
-                trackToReset.NotifyAll();
-            }
-
-            UpdateCoverPreview();
-
-            ShowNotification("Tracks reset to original metadata.", 4, "Info", NotificationType.Information);
+            ResetTracksFunc();
         }
 
         [RelayCommand]
@@ -1045,7 +1106,7 @@ namespace MusicMetaWriter_CP.ViewModels
                         string outputFilePath = Path.Combine(finalOutputPath ?? outputPath, $"{baseFileName}.{format}");
                         string filter = "", extraFilter = "", formatargs = "", metadata = "", cover = "";
 
-                        string pre_args = "", mp4Filter = "", mp4Input = "", tempCoverPath = null;
+                        string? pre_args = "", mp4Filter = "", mp4Input = "", tempCoverPath = null;
 
                         #region Loudness Normalization
                         if (Use_ln)
@@ -1087,7 +1148,7 @@ namespace MusicMetaWriter_CP.ViewModels
                                     Bitmap? coverImage = null;
 
                                     // Prefer custom cover if user replaced it
-                                    if (newCoverList.TryGetValue(track.Path!, out var customCover) && customCover != null)
+                                    if (newCoverList.TryGetValue(track!.Path!, out var customCover) && customCover != null)
                                         coverImage = customCover;
                                     else
                                     {

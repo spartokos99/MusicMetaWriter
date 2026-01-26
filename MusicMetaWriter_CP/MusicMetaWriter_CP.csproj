@@ -8,11 +8,14 @@
     <AssemblyName>MusicMetaWriter</AssemblyName>
     <AssemblyTitle>MusicMetaWriter</AssemblyTitle>
     <RootNamespace>MusicMetaWriter</RootNamespace>
-    <ApplicationIcon>Assets\arrow_13782286.ico</ApplicationIcon>
+    <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <Title>MusicMetaWriter</Title>
     <Authors>BashCode</Authors>
     <Copyright>2025 BashCode</Copyright>
+    <Version>1.1.1</Version>
+    <AssemblyVersion>1.1.1</AssemblyVersion>
+    <FileVersion>1.1.1</FileVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <DebugType>none</DebugType>
@@ -32,7 +35,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Assets\arrow_13782286.ico" />
+    <Content Include="Assets\icon.ico" />
   </ItemGroup>
 
   <ItemGroup>

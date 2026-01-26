@@ -49,6 +49,12 @@ namespace MusicMetaWriter_CP.ViewModels
 
             CloseRequested?.Invoke(this, EventArgs.Empty);
         }
+
+        [RelayCommand]
+        private void OpenConfigFolder()
+        {
+            _parentVm.OpenConfigFolder();
+        }
         #endregion
 
         public SettingsWindowViewModel(MainWindowViewModel parentVm, AppSettingsModel? tempSettings)

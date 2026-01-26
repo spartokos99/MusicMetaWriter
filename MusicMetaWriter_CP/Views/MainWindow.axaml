@@ -14,11 +14,30 @@
         MinWidth="1100" MinHeight="1100"
         Background="{DynamicResource ThemeBackgroundBrush}"
         WindowStartupLocation="CenterScreen"
-        Icon="">
+        Name="MusicMetaWriter">
 
     <Window.Resources>
 		<converters:NonHideableColumnConverter x:Key="NonHideableColumnConverter" />
-    </Window.Resources> 
+        <converters:StringEqualityToBoolConverter x:Key="StringEqualsConverter" />
+    </Window.Resources>
+
+    <NativeMenu.Menu>
+        <NativeMenu>
+            <NativeMenuItem Header="_File" >
+                <NativeMenu>
+                    <NativeMenuItem Header="_Load File(s)" Click="OpenFilesAsync" />
+                    <NativeMenuItem Header="_Load Folder" Click="OpenFolderAsync" />
+                    <NativeMenuItem Header="_Save Settings" Click="SaveSettings" />
+                </NativeMenu>
+            </NativeMenuItem>
+            <NativeMenuItem Header="_Edit">
+                <NativeMenu>
+                    <NativeMenuItem Header="_Batch Fill" Click="ShowBatchFill" />
+                    <NativeMenuItem Header="_Reset All" Click="ResetTracks" />
+                </NativeMenu>
+            </NativeMenuItem>
+        </NativeMenu>
+    </NativeMenu.Menu>
 
     <DockPanel>
 		<!-- Top Bar -->
@@ -27,6 +46,7 @@
             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                 <TextBlock Text="MusicMetaWriter" Classes="Header" VerticalAlignment="Center" FontWeight="Bold" />
                 <TextBlock Text="by BashCode" Foreground="{DynamicResource ThemeForegroundMidBrush}" VerticalAlignment="Center" Margin="10,0"/>
+                <TextBlock Text="{Binding AppVersionNumber}" Foreground="{DynamicResource ThemeForegroundMidBrush}" VerticalAlignment="Center"/>
                 <TextBlock Text="|" Foreground="{DynamicResource ThemeForegroundMidBrush}" VerticalAlignment="Center" Margin="8,0"/>
 
                 <Button Content="Load File(s)" Command="{Binding LoadFilesCommand}" />
@@ -133,13 +153,13 @@
                         <Border IsEnabled="{Binding Use_ln}" Background="Transparent">
                             <StackPanel Orientation="Vertical" Spacing="5">
 							    <TextBlock Text="Target LUFS:" VerticalAlignment="Center" />
-                                <NumericUpDown Value="{Binding Ln_target_i}" Minimum="-30" Maximum="10" Increment="0.5" />
+                                <NumericUpDown Value="{Binding Ln_target_i}" Minimum="-30" Maximum="10" Increment="0.5" IsEnabled="{Binding Ln_method, Converter={StaticResource StringEqualsConverter}, ConverterParameter=loudnorm}" />
 
                                 <TextBlock Text="True Peak (dBTP):" VerticalAlignment="Center" />
-                                <NumericUpDown Value="{Binding Ln_target_tpeak}" Minimum="-20" Maximum="10" Increment="0.5" />
+                                <NumericUpDown Value="{Binding Ln_target_tpeak}" Minimum="-20" Maximum="10" Increment="0.5" IsEnabled="{Binding Ln_method, Converter={StaticResource StringEqualsConverter}, ConverterParameter=loudnorm}" />
 
                                 <TextBlock Text="Loudness Range (LU):" VerticalAlignment="Center" />
-                                <NumericUpDown Value="{Binding Ln_target_lu}" Minimum="0" Maximum="30" Increment="0.5" />
+                                <NumericUpDown Value="{Binding Ln_target_lu}" Minimum="0" Maximum="30" Increment="0.5" IsEnabled="{Binding Ln_method, Converter={StaticResource StringEqualsConverter}, ConverterParameter=loudnorm}" />
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -164,7 +184,7 @@
                         <CheckBox Content="Keep original filename" IsChecked="{Binding Keep_filename}" />
                         <TextBlock Text="Filename Pattern" Margin="0,8,0,0" />
                         <TextBox Text="{Binding Fn_pattern}" IsEnabled="{Binding !Keep_filename}" IsReadOnly="false" />
-                        <TextBlock Text="Example: %number% - %artists% - %album% - %title%"
+                        <TextBlock Text="Vars: %number% - %artists% - %album% - %title% - %bpm% - %key%"
                                     FontSize="11" Foreground="Gray" Margin="0,4,0,0" />
                     </StackPanel>
 
@@ -220,7 +240,7 @@
 
             <!-- Main DataGrid -->
             <Border Grid.Column="1"
-                    BorderBrush="Green"
+                    BorderBrush="Purple"
                     BorderThickness="1"
                     CornerRadius="6"
                     Margin="0,10,15,0">

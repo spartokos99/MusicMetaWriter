@@ -40,10 +40,11 @@ namespace MusicMetaWriter.Models
         public bool search_subdirectories { get; set; } = false;
         public int reduce_size { get; set; } = 3;
         #endregion
-
-        private static string SettingsPath => Path.Combine(
+        public static string SettingsDirectory => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "BashCode", "MusicMetaWriter", "settings.json");
+            "BashCode", "MusicMetaWriter");
+        
+        public static string SettingsPath => Path.Combine(SettingsDirectory, "settings.json");
 
         public static AppSettingsModel Load()
         {

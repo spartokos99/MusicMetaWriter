@@ -3,12 +3,20 @@
              xmlns:notification="using:Avalonia.Notification.Controls"
              x:Class="MusicMetaWriter_CP.App"
              xmlns:local="using:MusicMetaWriter_CP"
+             Name="MusicMetaWriter"
              RequestedThemeVariant="Default">
              <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
     <Application.DataTemplates>
         <local:ViewLocator/>
     </Application.DataTemplates>
+
+    <NativeMenu.Menu>
+        <NativeMenu>
+            <NativeMenuItem Header="_About" Click="ShowAbout" />
+            <NativeMenuItem Header="_Advanced Settings" Click="OpenAdvancedSettings" />
+        </NativeMenu>
+    </NativeMenu.Menu>
   
     <Application.Styles>
         <FluentTheme />
