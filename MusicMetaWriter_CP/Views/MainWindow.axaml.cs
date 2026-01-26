@@ -2,7 +2,6 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using MusicMetaWriter.Models;
 using MusicMetaWriter_CP.ViewModels;
-using WinRT;
 
 namespace MusicMetaWriter_CP.Views
 {
@@ -16,7 +15,8 @@ namespace MusicMetaWriter_CP.Views
 
         private void MyDataGrid_SelectionChanged(object? sender, SelectionChangedEventArgs e)
         {
-            DataContext.As<MainWindowViewModel>().OnDataGridSelChange(sender, e, MyDataGrid);
+            MainWindowViewModel? mwvm = DataContext as MainWindowViewModel;
+            mwvm?.OnDataGridSelChange(sender, e, MyDataGrid);
         }
 
         private void MyDataGrid_Loaded(object? sender, RoutedEventArgs e)

@@ -23,7 +23,7 @@ namespace MusicMetaWriter_CP.ViewModels
         [ObservableProperty] public int reduce_size;
         #endregion
 
-        #region Helper
+        #region Helpers
         private void LoadAdvancedSettings()
         {
             Use_better_cover = _tempSettings.use_better_cover;

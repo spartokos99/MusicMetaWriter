@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows10.0.17763.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
@@ -9,7 +9,7 @@
     <AssemblyTitle>MusicMetaWriter</AssemblyTitle>
     <RootNamespace>MusicMetaWriter</RootNamespace>
     <ApplicationIcon>Assets\arrow_13782286.ico</ApplicationIcon>
-    <PlatformTarget>x64</PlatformTarget>
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <Title>MusicMetaWriter</Title>
     <Authors>BashCode</Authors>
     <Copyright>2025 BashCode</Copyright>
@@ -20,6 +20,12 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <DebugType>none</DebugType>
   </PropertyGroup>
+	<PropertyGroup>
+		<PublishSingleFile>true</PublishSingleFile>
+		<SelfContained>true</SelfContained>
+		<PublishTrimmed>true</PublishTrimmed>
+		<PublishReadyToRun>true</PublishReadyToRun>
+	</PropertyGroup>
 
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
@@ -41,19 +47,10 @@
       <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
     </PackageReference>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.1" />
-    <PackageReference Include="libKeyFinder.NET" Version="1.0.0" />
     <PackageReference Include="MessageBox.Avalonia" Version="3.3.1.1" />
-    <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="Notification.Avalonia" Version="2.2.0" />
     <PackageReference Include="SharpCompress" Version="0.42.1" />
-    <PackageReference Include="SoundTouch.Net" Version="2.3.2" />
     <PackageReference Include="TagLibSharp" Version="2.3.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="Bass.Net">
-      <HintPath>D:\UserData\Desktop\Bass.Net.dll</HintPath>
-    </Reference>
   </ItemGroup>
 
   <ItemGroup>

@@ -25,14 +25,6 @@ using System.Linq;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-using System.Timers;
-using Un4seen.Bass;
-using Un4seen.Bass.AddOn.Fx;
-using Un4seen.Bass.Misc;
-using Windows.Storage;
-using Windows.Storage.Pickers;
-using Windows.UI.ViewManagement;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using Bitmap = Avalonia.Media.Imaging.Bitmap;
 using Icon = MsBox.Avalonia.Enums.Icon;
 
@@ -111,7 +103,7 @@ namespace MusicMetaWriter_CP.ViewModels
         [ObservableProperty] private bool btn_analyze_enabled = false;
         #endregion
 
-        #region Helper Functions
+        #region Basics
         public void PrepareLogs()
         {
             try
@@ -124,12 +116,12 @@ namespace MusicMetaWriter_CP.ViewModels
                 {
                     File.Create(logFilePath);
                 }
-            } catch (Exception ex)
+            }
+            catch (Exception ex)
             {
                 Console.WriteLine(ex.ToString());
             }
         }
-
         public void WriteLog(string message, LogLevel level = LogLevel.Info)
         {
             try
@@ -141,7 +133,8 @@ namespace MusicMetaWriter_CP.ViewModels
 
                 string body = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [" + level.ToString().ToUpper() + "] " + message + Environment.NewLine;
                 File.AppendAllText(logFilePath, body);
-            } catch (Exception ex)
+            }
+            catch (Exception ex)
             {
                 Console.WriteLine(ex.ToString());
             }
@@ -187,21 +180,9 @@ namespace MusicMetaWriter_CP.ViewModels
             }
         }
 
-        private string[] GetSelectedFormats()
-        {
-            var list = new List<string>();
-            if (Export_mp4) list.Add("mp4");
-            if (Export_mp3) list.Add("mp3");
-            if (Export_wav) list.Add("wav");
-            if (Export_flac) list.Add("flac");
-            if (Export_aiff) list.Add("aiff");
-
-            return list.ToArray();
-        }
-
         public void SetTheme()
         {
-            string theme = localSettings.use_theme == ThemeEnum.Dark ? "dark" : (localSettings.use_theme == ThemeEnum.Light ? "light" : "default");
+            string theme = localSettings?.use_theme == ThemeEnum.Dark ? "dark" : (localSettings?.use_theme == ThemeEnum.Light ? "light" : "default");
             switch (theme.ToLower())
             {
                 case "light":
@@ -217,19 +198,17 @@ namespace MusicMetaWriter_CP.ViewModels
             }
         }
 
-        private bool ImagesAreEqual(Bitmap? bmp1, Bitmap? bmp2)
+        public void ShowNotification(string text, int delay, string badge = "Info", NotificationType type = NotificationType.Information, bool animated = true)
         {
-            if (ReferenceEquals(bmp1, bmp2)) return true;
-            if (bmp1 is null || bmp2 is null) return false;
-            if (bmp1.PixelSize != bmp2.PixelSize || bmp1.Format != bmp2.Format) return false;
-
-            using var ms1 = new MemoryStream();
-            using var ms2 = new MemoryStream();
-
-            bmp1.Save(ms1);
-            bmp2.Save(ms2);
-
-            return ms1.ToArray().SequenceEqual(ms2.ToArray());
+            this.NotificationManager.CreateMessage()
+                    .Accent(defaultNotificationAccent)
+                    .Animates(animated)
+                    .Background(defaultNotificationBackground)
+                    .HasBadge(badge)
+                    .HasType(type)
+                    .HasMessage(text)
+                    .Dismiss().WithDelay(TimeSpan.FromSeconds(delay))
+                    .Queue();
         }
 
         public void UpdateCoverPreview()
@@ -261,85 +240,13 @@ namespace MusicMetaWriter_CP.ViewModels
 
                 SelectedImage = allSame ? firstCover : null;
                 return;
-            } else
+            }
+            else
             {
                 SelectedImage = null;
             }
         }
 
-        private string[] GetHiddenColumns()
-        {
-            if (MainDataGrid == null) return [];
-            return MainDataGrid.Columns.Where(col => !col.IsVisible).Select(col => col.Header?.ToString()?.ToLower().Replace(" ", "_") ?? "").ToArray();
-        }
-
-        public void ShowNotification(string text, int delay, string badge = "Info", NotificationType type = NotificationType.Information, bool animated = true)
-        {
-            this.NotificationManager.CreateMessage()
-                    .Accent(defaultNotificationAccent)
-                    .Animates(animated)
-                    .Background(defaultNotificationBackground)
-                    .HasBadge(badge)
-                    .HasType(type)
-                    .HasMessage(text)
-                    .Dismiss().WithDelay(TimeSpan.FromSeconds(delay))
-                    .Queue();
-        }
-
-        private static void ExtractTarXz(string archive, string target)
-        {
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = "tar",
-                Arguments = $"-xJf \"{archive}\" -C \"{target}\"",
-                CreateNoWindow = true
-            })!.WaitForExit();
-        }
-
-        private static void MakeExecutable(string path)
-        {
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = "chmod",
-                Arguments = $"+x \"{path}\"",
-                CreateNoWindow = true
-            })!.WaitForExit();
-        }
-
-        private static string GetDownloadUrl()
-        {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                return "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip";
-
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-                return "https://evermeet.cx/ffmpeg/getrelease/zip";
-
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                return "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz";
-
-            throw new PlatformNotSupportedException();
-        }
-
-        public void CheckFFMPEG()
-        {
-            // system-wide
-            if (File.Exists(ffmpegPath))
-            {
-                IsLoading = false;
-                LoadStatus = "";
-                FfmpegFound = true;
-                WriteLog("Ffmpeg found.");
-                return;
-            }
-
-            WriteLog("Ffmpeg not found!", LogLevel.Warn);
-            IsLoading = true;
-            LoadStatus = "ffmpeg not found!";
-            FfmpegFound = false;
-        }
-        #endregion
-
-        #region Tasks
         private async Task GenerateTrackModelWithProgress(string[] paths, IProgress<double> progress)
         {
             await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
@@ -402,7 +309,73 @@ namespace MusicMetaWriter_CP.ViewModels
                 Path = item.Path
             }));
         }
+        #endregion
 
+        #region Helpers
+        private string[] GetSelectedFormats()
+        {
+            var list = new List<string>();
+            if (Export_mp4) list.Add("mp4");
+            if (Export_mp3) list.Add("mp3");
+            if (Export_wav) list.Add("wav");
+            if (Export_flac) list.Add("flac");
+            if (Export_aiff) list.Add("aiff");
+
+            return list.ToArray();
+        }
+
+        private string[] GetHiddenColumns()
+        {
+            if (MainDataGrid == null) return [];
+            return MainDataGrid.Columns.Where(col => !col.IsVisible).Select(col => col.Header?.ToString()?.ToLower().Replace(" ", "_") ?? "").ToArray();
+        }
+
+        private bool ImagesAreEqual(Bitmap? bmp1, Bitmap? bmp2)
+        {
+            if (ReferenceEquals(bmp1, bmp2)) return true;
+            if (bmp1 is null || bmp2 is null) return false;
+            if (bmp1.PixelSize != bmp2.PixelSize || bmp1.Format != bmp2.Format) return false;
+
+            using var ms1 = new MemoryStream();
+            using var ms2 = new MemoryStream();
+
+            bmp1.Save(ms1);
+            bmp2.Save(ms2);
+
+            return ms1.ToArray().SequenceEqual(ms2.ToArray());
+        }
+        #endregion
+
+        #region FFMPEG
+        public void CheckFFMPEG()
+        {
+            if (File.Exists(ffmpegPath))
+            {
+                IsLoading = false;
+                LoadStatus = "";
+                FfmpegFound = true;
+                WriteLog("Ffmpeg found.");
+                return;
+            }
+
+            WriteLog("Ffmpeg not found!", LogLevel.Warn);
+            IsLoading = true;
+            LoadStatus = "ffmpeg not found!";
+            FfmpegFound = false;
+        }
+        private static string GetDownloadUrl()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                return "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip";
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                return "https://evermeet.cx/ffmpeg/getrelease/zip";
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                return "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz";
+
+            throw new PlatformNotSupportedException();
+        }
         private async Task DownloadFfmpegAsync()
         {
             WriteLog("Downloading ffmpeg...");
@@ -446,7 +419,24 @@ namespace MusicMetaWriter_CP.ViewModels
             Directory.Delete(tempDir, recursive: true);
             CheckFFMPEG();
         }
-
+        private static void ExtractTarXz(string archive, string target)
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "tar",
+                Arguments = $"-xJf \"{archive}\" -C \"{target}\"",
+                CreateNoWindow = true
+            })!.WaitForExit();
+        }
+        private static void MakeExecutable(string path)
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "chmod",
+                Arguments = $"+x \"{path}\"",
+                CreateNoWindow = true
+            })!.WaitForExit();
+        }
         private async Task<bool> RunFfmpegAsync(string args, string outputFilePath)
         {
             try
@@ -475,14 +465,14 @@ namespace MusicMetaWriter_CP.ViewModels
                 {
                     if (!string.IsNullOrWhiteSpace(e.Data))
                     {
-                        WriteLog($"[FFmpeg ERR] {e.Data}");
+                        WriteLog($"[FFmpeg] {e.Data}");
                     }
                 };
                 process.OutputDataReceived += (sender, e) =>
                 {
                     if (!string.IsNullOrWhiteSpace(e.Data))
                     {
-                        WriteLog($"[FFmpeg OUT] {e.Data}");
+                        WriteLog($"[FFmpeg] {e.Data}");
                     }
                 };
 
@@ -1255,12 +1245,13 @@ namespace MusicMetaWriter_CP.ViewModels
                         {
                             string filterComplex = mp4Filter + "[1:a]anull[a]";
 
-                            args = $"-y {mp4Input}" +                              // video input first
-                                   $"-i \"{track?.Path!}\" " +                     // audio input second
-                                   $"-filter_complex \"{filterComplex}\" " +
-                                   $"-map \"[v0]\" " +                             // output video from filter
-                                   $"-map \"[a]\" " +                              // output audio
-                                   $"{formatargs} " +                              // encoding settings
+                            pre_args = $"-filter_complex \"{filterComplex}\" " +
+                                   $"-map \"[v0]\" " +                     
+                                   $"-map \"[a]\" " +                          
+                                   $"{formatargs} ";
+
+                            args = $"-y {mp4Input}" +              
+                                   $"-i \"{track?.Path!}\" " + pre_args +                              
                                    $"\"{outputFilePath}\"";
                         } else
                         {
