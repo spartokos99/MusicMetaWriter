@@ -1,4 +1,5 @@
 ﻿using MusicMetaWriter.Enums;
+using MusicMetaWriter_CP.Models;
 using System;
 using System.IO;
 using System.Text.Json;
@@ -49,7 +50,7 @@ namespace MusicMetaWriter.Models
             if (File.Exists(SettingsPath))
             {
                 var json = File.ReadAllText(SettingsPath);
-                return JsonSerializer.Deserialize<AppSettingsModel>(json) ?? new AppSettingsModel();
+                return JsonSerializer.Deserialize(json, AppSettingsModelJsonContext.Default.AppSettingsModel) ?? new AppSettingsModel();
             }
             return new AppSettingsModel();
         }
@@ -60,7 +61,7 @@ namespace MusicMetaWriter.Models
             if (File.Exists(SettingsPath))
             {
                 var json = File.ReadAllText(SettingsPath);
-                current = JsonSerializer.Deserialize<AppSettingsModel>(json) ?? new AppSettingsModel();
+                current = JsonSerializer.Deserialize(json, AppSettingsModelJsonContext.Default.AppSettingsModel) ?? new AppSettingsModel();
             } else
             {
                 current = new AppSettingsModel();
@@ -100,7 +101,7 @@ namespace MusicMetaWriter.Models
             if (dir != null && !Directory.Exists(dir))
                 Directory.CreateDirectory(dir);
 
-            var jsonOut = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true });
+            var jsonOut = JsonSerializer.Serialize(this, AppSettingsModelJsonContext.Default.AppSettingsModel);
             File.WriteAllText(SettingsPath, jsonOut);
         }
     }
