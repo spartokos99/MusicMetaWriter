@@ -3,7 +3,7 @@
 **A modern, cross-platform audio batch exporter/converter & metadata editor**  
 Built with **Avalonia UI** + **FFmpeg** – Clean. Fast. Beautiful.
 
-![App Screenshot](https://i.imgur.com/StHNiBw.png)
+![App Screenshot](https://i.imgur.com/0kjAqxy.png)
 
 ## ✨ Features
 
@@ -29,8 +29,8 @@ Thanks for testing!
 ## 📸 Screenshots
 
 <p align="center">
-  <img src="https://i.imgur.com/StHNiBw.png" width="45%" alt="Main Window"/>
-  <img src="https://i.imgur.com/lyDdQBj.png" width="45%" alt="Light Theme"/>
+  <img src="https://i.imgur.com/Zf0pBMZ.png" width="45%" alt="Main Window"/>
+  <img src="https://i.imgur.com/f15k0gp.png" width="45%" alt="Light Theme"/>
 </p>
 
 ## 🚀 Quick Start
