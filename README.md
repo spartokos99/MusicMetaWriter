@@ -48,7 +48,7 @@ Since I didn't join the apple developers program, I can't codesign my app now. S
 
 - **Windows** 10/11 (tested on Win11 x64)
 - **macOS** 12+ (tested on Tahoe 26.2 x64)
-- **Linux** (not tested - no release package yet)
+- **Linux** (not tested)
 - **.NET 8.0** Desktop Runtime (usually auto-installed)
 
 ## 🏗️ Build from Source
