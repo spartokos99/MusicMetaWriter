@@ -42,7 +42,7 @@ Thanks for testing!
 ### **MacOS Users**
 Since I didn't join the apple developers program, I can't codesign my app now. So when you unzip the downloaded archive and try to open the app, it could tell you that the file is damaged, but its not. Apple adds an attribute to non-codesigned apps when unzipped from an archive.
 
-> Just run the **Unlock.command** file or type `sudo xattr -d com.apple.quarantine ./MusicMetaWriter.app`
+> Just run `sudo xattr -d com.apple.quarantine ./MusicMetaWriter.app`
 
 ## 🛠️ Requirements
 
