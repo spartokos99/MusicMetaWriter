@@ -15,6 +15,7 @@ Built with **Avalonia UI** + **FFmpeg** – Clean. Fast. Beautiful.
 - ✏️ **Metadata editor** with pattern-based filename generation  
 - 📂 **Folder & multi-file loading** with progress feedback  
 - 🌙 **Dark/Light/System theme** support  
+- 🔄 **Update Notification** Checks for new github releases on startup
 - 📝 **Detailed logging**
 
 ## ⚠️ Warning
