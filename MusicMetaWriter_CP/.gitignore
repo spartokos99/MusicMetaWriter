@@ -38,3 +38,9 @@ artifacts/
 .nuget/
 tools/*
 !tools/packages.config
+
+# Own
+PublishOSX.command
+BuildOSX.command
+CreateUniversal.command
+CleanPublish.command

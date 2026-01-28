@@ -430,24 +430,65 @@ namespace MusicMetaWriter_CP.ViewModels
 
             await LoadFilesWithProgressAsync(files);
         }
-
-        private async Task GenerateTrackModelWithProgress(string[] paths, IProgress<double> progress)
+        private async Task LoadFilesWithProgressAsync(string[] files)
         {
-            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+            IsLoading = true;
+            ShowProgress = true;
+            LoadStatus = $"Loading files... (0 / {files.Length})";
+            LoadProgress = 0;
+
+            var progress = new Progress<double>(current =>
+            {
+                LoadProgress = (double)current / files.Length * 100;
+                LoadStatus = $"Loading files... ({current} / {files.Length})";
+            });
+
+            try
             {
                 Tracks.Clear();
                 Backup.Clear();
-            });
+
+                var tracks = await Task.Run(() => GenerateTracks(files, progress));
+                foreach(var track in tracks)
+                    Tracks.Add(track);
+
+                // add all files to backup task
+                Backup = new ObservableCollection<TrackModel>(Tracks.Select(item => new TrackModel
+                {
+                    TrackNumber = item.TrackNumber,
+                    TrackName = item.TrackName,
+                    Album = item.Album,
+                    Artists = item.Artists,
+                    Genre = item.Genre,
+                    Bpm = item.Bpm,
+                    Key = item.Key,
+                    CoverImage = item.CoverImage,
+                    Path = item.Path
+                }));
+
+                ShowNotification($"{files.Length} track{(files.Length > 1 ? "s" : "")} loaded.", defaultNotificationTimeSpan, "Success", NotificationType.Success);
+            } catch (Exception ex)
+            {
+                ShowNotification("Error loading files: " + ex.Message, 10, "Error", NotificationType.Error);
+            } finally
+            {
+                IsLoading = false;
+                ShowProgress = false;
+                LoadStatus = "";
+                LoadProgress = 0;
+            }
+        }
+        private List<TrackModel> GenerateTracks(string[] files, IProgress<double> progress)
+        {
+            var list = new List<TrackModel>();
 
             bool useOgCover = localSettings!.reduce_size == 0;
             int coverSize = localSettings!.reduce_size == 1 ? 300 : (localSettings!.reduce_size == 2 ? 200 : 100);
 
-            for (int i = 0; i < paths.Length; i++)
+            for(int i = 0; i < files.Length; i++)
             {
-                var storageFile = paths[i];
-                LoadStatus = "Loading files... (" + i + " / " + paths.Length + ")";
-
-                progress.Report((i + 1) / (double)paths.Length * 100);
+                progress.Report(i + 1);
+                var storageFile = files[i];
 
                 try
                 {
@@ -468,30 +509,14 @@ namespace MusicMetaWriter_CP.ViewModels
                         Path = storageFile
                     };
 
-                    Avalonia.Threading.Dispatcher.UIThread.Invoke(() =>
-                    {
-                        Tracks.Add(tvm);
-                    });
-                }
-                catch (Exception ex)
+                    list.Add(tvm);
+                } catch (Exception ex)
                 {
                     ShowNotification(ex.Message, 10, "Error", NotificationType.Error);
                 }
             }
 
-            // add all files to backup task
-            Backup = new ObservableCollection<TrackModel>(Tracks.Select(item => new TrackModel
-            {
-                TrackNumber = item.TrackNumber,
-                TrackName = item.TrackName,
-                Album = item.Album,
-                Artists = item.Artists,
-                Genre = item.Genre,
-                Bpm = item.Bpm,
-                Key = item.Key,
-                CoverImage = item.CoverImage,
-                Path = item.Path
-            }));
+            return list;
         }
         #endregion
 
@@ -702,31 +727,6 @@ namespace MusicMetaWriter_CP.ViewModels
         private void OpenLogFolder()
         {
             OpenLogFolderFunc();
-        }
-
-        [RelayCommand]
-        private async Task LoadFilesWithProgressAsync(string[] files)
-        {
-            IsLoading = true;
-            ShowProgress = true;
-            LoadStatus = "Loading files... (0 / " + files.Length + ")";
-            LoadProgress = 0;
-
-            var progress = new Progress<double>(p => LoadProgress = p);
-            try
-            {
-                await Task.Run(() => GenerateTrackModelWithProgress(files, progress));
-                ShowNotification($"{files.Length} track{(files.Length > 1 ? "s" : "")} loaded.", defaultNotificationTimeSpan, "Success", NotificationType.Success);
-            } catch (Exception ex)
-            {
-                ShowNotification("Error loading files: " + ex.Message, 10, "Error", NotificationType.Error);
-            } finally
-            {
-                IsLoading = false;
-                ShowProgress = false;
-                LoadStatus = "";
-                LoadProgress = 0;
-            }
         }
 
         [RelayCommand]
