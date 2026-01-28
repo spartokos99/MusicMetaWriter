@@ -7,8 +7,9 @@ Built with **Avalonia UI** + **FFmpeg** – Clean. Fast. Beautiful.
 
 ## ✨ Features
 
+- ❎ **Cross-Platform supoort** Win / macOS / Linux
 - 🎧 **Batch export** to MP3 · WAV · FLAC · AIFF · MP4 (Cover + Custom Media)
-- 🔊 **Loudness normalization** (EBU R128 loudnorm + ReplayGain)  
+- 🔊 **Loudness normalization** (EBU R128 loudnorm + ReplayGain)
 - ⚙️ **Bit-depth conversion** (16/24-bit with smart dithering)  
 - 🖼️ **Cover art replacement** (single or bulk)  
 - ✏️ **Metadata editor** with pattern-based filename generation  
@@ -19,7 +20,7 @@ Built with **Avalonia UI** + **FFmpeg** – Clean. Fast. Beautiful.
 ## ⚠️ Warning
 
 **Please be aware that I am a solo developer and this is my first Avalonia project, so bugs/errors may occur.**
-> Report any crashes, weird behavior or missing features.
+> Report any crashes, weird behavior or missing features [here](https://github.com/spartokos99/MusicMetaWriter/issues).
 > Your feedback will shape the future of this tool!
 
 Thanks for testing!

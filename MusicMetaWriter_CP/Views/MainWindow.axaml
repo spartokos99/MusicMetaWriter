@@ -76,7 +76,13 @@
             </Border>
 
 			<StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left" Margin="30,15" Opacity="0.5">
-				<Button Content="Download FFMPEG !" 
+				<Button Content="Update Available!"
+                        IsVisible="{Binding UpdateAvailable}" IsEnabled="{Binding UpdateAvailable}"
+                        Command="{Binding OpenReleasePageCommand}"
+                        CornerRadius="20"
+                        FontWeight="Bold" Background="Green" />
+                
+                <Button Content="Download FFMPEG !"
                         IsVisible="{Binding !FfmpegFound}" IsEnabled="{Binding !FfmpegFound}"
                         Command="{Binding EnsureFfmpegCommand}"
                         CornerRadius="20"

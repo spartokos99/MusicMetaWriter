@@ -25,6 +25,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using Bitmap = Avalonia.Media.Imaging.Bitmap;
 using Icon = MsBox.Avalonia.Enums.Icon;
@@ -58,10 +59,15 @@ namespace MusicMetaWriter_CP.ViewModels
             Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ffmpeg", RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "ffmpeg.exe" : "ffmpeg").ToString();
 
         public bool IsLoudnormSelected => Ln_method == "loudnorm";
+
+        private const string RepoOwner = "spartokos99";
+        private const string RepoName = "MusicMetaWriter";
+        private string releaseUrl = "";
         #endregion
 
         #region ObservableProperties
         [ObservableProperty] private string? _appVersionNumber = ("v" + Assembly.GetExecutingAssembly().GetName().Version?.ToString(3)) ?? "Unknown";
+        [ObservableProperty] private bool _updateAvailable = false;
 
         [ObservableProperty] private ObservableCollection<TrackModel> _tracks = new();
         [ObservableProperty] private ObservableCollection<TrackModel> _backup = new();
@@ -700,6 +706,65 @@ namespace MusicMetaWriter_CP.ViewModels
             {
                 WriteLog($"Exception while running FFmpeg: {ex.Message}");
                 return false;
+            }
+        }
+        #endregion
+
+        #region Updater
+        public async Task CheckForUpdateAsync()
+        {
+            #region Log
+            WriteLog("Checking for Updates ...", LogLevel.Info);
+            #endregion
+
+            try
+            {
+                using var client = new HttpClient();
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("MusicMetaWriter/1.0");
+
+                var response = await client.GetStringAsync($"https://api.github.com/repos/{RepoOwner}/{RepoName}/releases/latest");
+                var json = JsonNode.Parse(response);
+                string? tagName = json?["tag_name"]?.GetValue<string>();
+
+                if(string.IsNullOrEmpty(tagName))
+                    return;
+
+                string latestVersionStr = tagName.TrimStart('v', 'V');
+                if (!Version.TryParse(latestVersionStr, out var latestVersion))
+                    return;
+
+                string currentVersionStr = AppVersionNumber?.TrimStart('v', 'V') ?? "0";
+                if (!Version.TryParse(currentVersionStr, out var currentVersion))
+                    return;
+
+                WriteLog($"Current Version: {currentVersion}");
+                WriteLog($"Latest Version: {latestVersion}");
+
+                if (latestVersion > currentVersion)
+                {
+                    string? _releaseTitle = json?["name"]?.GetValue<string>() ?? tagName;
+                    string? _releaseUrl   = json?["html_url"]?.GetValue<string>();
+
+                    #region Log
+                    WriteLog("Update found! " + _releaseUrl);
+                    #endregion
+
+                    releaseUrl = _releaseUrl ?? "";
+                    UpdateAvailable = true;
+                }
+            } catch (Exception ex) {}
+        }
+        
+        [RelayCommand]
+        private void OpenReleasePage()
+        {
+            if(releaseUrl is not null && releaseUrl != "")
+            {
+                Process.Start(new ProcessStartInfo(releaseUrl) { UseShellExecute = true });
+                WriteLog("Update release page opened.");
+            } else
+            {
+                WriteLog("Update button clicked, but no releaseUrl was found");
             }
         }
         #endregion

@@ -33,6 +33,7 @@ namespace MusicMetaWriter_CP.Views
                 vm.LoadSettings();
 
                 vm.CheckFFMPEG();
+                _ = Task.Run(vm.CheckForUpdateAsync);
             }
         }
 
