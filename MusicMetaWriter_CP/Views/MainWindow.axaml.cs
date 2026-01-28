@@ -38,19 +38,19 @@ namespace MusicMetaWriter_CP.Views
         }
 
         #region NativeMenu
-        private void OpenFilesAsync(object? sender, EventArgs args)
+        private async void OpenFilesAsync(object? sender, EventArgs args)
         {
             if (DataContext is MainWindowViewModel vm)
             {
-                vm.LoadFilesAsyncFunc();
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(vm.LoadFilesAsyncFunc);
             }
         }
 
-        private void OpenFolderAsync(object? sender, EventArgs args)
+        private async void OpenFolderAsync(object? sender, EventArgs args)
         {
             if (DataContext is MainWindowViewModel vm)
             {
-                vm.LoadFolderAsyncFunc();
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(vm.LoadFolderAsyncFunc);
             }
         }
 
