@@ -4,6 +4,8 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Platform;
+using Avalonia.Threading;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
@@ -31,6 +33,17 @@ namespace MusicMetaWriter_CP
                 {
                     DataContext = new MainWindowViewModel(),
                 };
+
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                {
+                    desktop.MainWindow.Opened += (s, e) =>
+                    {
+                        Dispatcher.UIThread.InvokeAsync(() =>
+                        {
+                            NativeMenu.SetMenu(desktop.MainWindow, NativeMenu.GetMenu(desktop.MainWindow));
+                        }, DispatcherPriority.Background);
+                    };
+                }
 
                 // Add notification service
                 //var notificationService = new NotificationServiceBuilder()

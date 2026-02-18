@@ -27,6 +27,8 @@ namespace MusicMetaWriter.Models
         public bool cr_subdirectory { get; set; } = true;
         public bool convertBit { get; set; } = false;
         public int convertToBit { get; set; } = 24;
+        public bool dithering { get; set; } = false;
+        public bool force44100 { get; set; } = false;
 
         public bool keep_filename { get; set; } = false;
         public string? fn_pattern { get; set; } = "%number% - %artists% - %album% - %title%";
@@ -85,6 +87,7 @@ namespace MusicMetaWriter.Models
                 current.cr_subdirectory = this.cr_subdirectory;
                 current.convertBit = this.convertBit;
                 current.convertToBit = this.convertToBit;
+                current.dithering = this.dithering;
                 current.keep_filename = this.keep_filename;
                 current.fn_pattern = this.fn_pattern;
                 current.hidden_columns = this.hidden_columns;

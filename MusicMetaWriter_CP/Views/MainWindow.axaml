@@ -148,7 +148,7 @@
                     <controls:NotificationMessageContainer Manager="{Binding NotificationManager}" />
 
                     <!-- Loudness Normalization -->
-                    <StackPanel Orientation="Vertical" Spacing="8" Margin="0,0,0,20">
+                    <StackPanel Orientation="Vertical" Spacing="8" Margin="0,0,0,20" IsEnabled="{Binding LnAvailable}">
                         <TextBlock Text="Loudness Normalization" FontWeight="SemiBold" />
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Stretch" Spacing="8">
                             <CheckBox Content="Enable" IsChecked="{Binding Use_ln}" />
@@ -174,14 +174,16 @@
                     <StackPanel Orientation="Vertical" Spacing="4">
                         <TextBlock Text="File Options" FontWeight="SemiBold" />
                         <CheckBox Content="Create sub-directory for each track" IsChecked="{Binding Cr_subdirectory}" />
-                        <StackPanel Orientation="Horizontal" Spacing="10">
+                        <StackPanel Orientation="Horizontal" Spacing="10" IsEnabled="{Binding ConvertAvailable}">
                             <CheckBox Content="Convert to:" IsChecked="{Binding ConvertBit}" />
                             <ComboBox SelectedIndex="0"
                                         ItemsSource="{Binding ConvertToBitItems}"
                                         SelectedValue="{Binding ConvertToBit}"
                                         IsEnabled="{Binding ConvertBit}" />
                             <TextBlock Text="bit" VerticalAlignment="Center" />
+                            <CheckBox Content="Dithering" IsChecked="{Binding Dithering}" IsEnabled="{Binding UseDithering}" />
                         </StackPanel>
+                        <CheckBox Content="Force 44.100Hz" IsChecked="{Binding Force44100}" />
                     </StackPanel>
 
                     <!-- File Name -->
@@ -190,8 +192,10 @@
                         <CheckBox Content="Keep original filename" IsChecked="{Binding Keep_filename}" />
                         <TextBlock Text="Filename Pattern" Margin="0,8,0,0" />
                         <TextBox Text="{Binding Fn_pattern}" IsEnabled="{Binding !Keep_filename}" IsReadOnly="false" />
-                        <TextBlock Text="Vars: %number% - %artists% - %album% - %title% - %bpm% - %key%"
-                                    FontSize="11" Foreground="Gray" Margin="0,4,0,0" />
+                        <TextBlock Text="Usable Variables:"
+                                    FontSize="11" FontWeight="Bold" Foreground="Gray" Margin="0,4,0,0" />
+                        <TextBlock Text="%number% - %artists% - %album% - %title% - %bpm% - %key%"
+                                    FontSize="9" Foreground="Gray" Margin="0,4,0,0" />
                     </StackPanel>
 
                     <StackPanel Orientation="Vertical" Spacing="4">

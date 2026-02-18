@@ -100,6 +100,12 @@ namespace MusicMetaWriter_CP.ViewModels
         [ObservableProperty] private bool cr_subdirectory;
         [ObservableProperty] private bool convertBit;
         [ObservableProperty] private int _convertToBit;
+        [ObservableProperty] private bool dithering;
+        [ObservableProperty] private bool _useDithering;
+        [ObservableProperty] private bool force44100;
+
+        [ObservableProperty] private bool lnAvailable;
+        [ObservableProperty] private bool convertAvailable;
 
         [ObservableProperty] private bool keep_filename;
         [ObservableProperty] private string? fn_pattern;
@@ -199,6 +205,8 @@ namespace MusicMetaWriter_CP.ViewModels
                 Cr_subdirectory = localSettings.cr_subdirectory;
                 ConvertBit = localSettings.convertBit;
                 ConvertToBit = localSettings.convertToBit;
+                Dithering = localSettings.dithering;
+                Force44100 = localSettings.force44100;
 
                 Keep_filename = localSettings.keep_filename;
                 Fn_pattern = localSettings.fn_pattern;
@@ -220,6 +228,7 @@ namespace MusicMetaWriter_CP.ViewModels
         {
             if (localSettings is null) localSettings = AppSettingsModel.Load();
             
+            localSettings.export_mp4 = Export_mp4;
             localSettings.export_mp3 = Export_mp3;
             localSettings.export_wav = Export_wav;
             localSettings.export_flac = Export_flac;
@@ -232,6 +241,8 @@ namespace MusicMetaWriter_CP.ViewModels
             localSettings.cr_subdirectory = Cr_subdirectory;
             localSettings.convertBit = ConvertBit;
             localSettings.convertToBit = ConvertToBit;
+            localSettings.dithering = Dithering;
+            localSettings.force44100 = Force44100;
             localSettings.keep_filename = Keep_filename;
             localSettings.fn_pattern = Fn_pattern;
             localSettings.hidden_columns = GetHiddenColumns();
@@ -894,16 +905,35 @@ namespace MusicMetaWriter_CP.ViewModels
                 return;
             }
 
-            var box = MessageBoxManager
-                .GetMessageBoxStandard(
-                    title: "Confirm",
-                    text: "Are you sure you want to replace the cover of th" + (isMultiple ? "ese" : "is") + " track" + (isMultiple ? "s" : "") + ":\r\n\r\n" + string.Join("\r\n", paths) + "\r\n\r\nWith this image:\r\n" + file,
-                    ButtonEnum.YesNo,
-                    Icon.Warning);
+            var msg = "Are you sure you want to replace the cover of " + SelectedTracks.Count + " track" + (isMultiple ? "s" : "") + "?\r\n\r\nWith this image:\r\n" + file + "\r\n\r\n";
+            var box = MessageBoxManager.GetMessageBoxCustom(
+                new MessageBoxCustomParams
+                {
+                    ButtonDefinitions = new List<ButtonDefinition>
+                    {
+                        new ButtonDefinition { Name = "Yes", },
+                        new ButtonDefinition { Name = "No", }
+                    },
+                    ContentTitle = "Confirm",
+                    ContentMessage = msg,
+                    Icon = Icon.Warning,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                    CanResize = false,
+                    SizeToContent = SizeToContent.WidthAndHeight,
+                    ShowInCenter = true,
+                }
+            );
+
+            // var box = MessageBoxManager
+            //     .GetMessageBoxStandard(
+            //         title: "Confirm",
+            //         text: "Are you sure you want to replace the cover of th" + (isMultiple ? "ese" : "is") + " track" + (isMultiple ? "s" : "") + ":\r\n\r\n" + string.Join("\r\n", paths) + "\r\n\r\nWith this image:\r\n" + file,
+            //         ButtonEnum.YesNo,
+            //         Icon.Warning);
 
             var boxResult = await box.ShowAsync();
 
-            if (boxResult == ButtonResult.Yes)
+            if (boxResult == "Yes")
             {
                 foreach(var item in SelectedTracks)
                 {
@@ -1098,9 +1128,25 @@ namespace MusicMetaWriter_CP.ViewModels
                 await msg.ShowAsync();
                 return;
             }
+            if(GetSelectedFormats().Contains("mp4") && (Use_ln || ConvertBit))
+            {
+                var msg = MessageBoxManager.GetMessageBoxStandard(new MessageBoxStandardParams
+                {
+                    CanResize = false,
+                    ContentHeader = "Attention!",
+                    ContentTitle = "Info",
+                    ContentMessage = "Please note, that mp4 exports uses the the original (input) audio file, not a converted one.\r\nAlso if a track doesn't has a cover, it will be skipped.",
+                    ShowInCenter = true,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                    ButtonDefinitions = ButtonEnum.Ok,
+                    SizeToContent = SizeToContent.WidthAndHeight
+                });
+                await msg.ShowAsync();
+            }
             #endregion
 
             #region Log
+            PrepareLogs();
             WriteLog("");
             WriteLog(">>> Starting track export ....");
             WriteLog("> Tracks: " + Tracks.Count + " | Subdirectory: " + (Cr_subdirectory ? "Yes" : "No") + " | New files: " + (Tracks.Count * GetSelectedFormats().Length));
@@ -1218,7 +1264,8 @@ namespace MusicMetaWriter_CP.ViewModels
                                     else
                                     {
                                         using var tfile = TagLib.File.Create(track.Path);
-                                        coverImage = new Bitmap(new MemoryStream(tfile.Tag.Pictures[0].Data.Data));
+                                        if (tfile.Tag.Pictures.Length > 0)
+                                            coverImage = new Bitmap(new MemoryStream(tfile.Tag.Pictures[0].Data.Data));
                                     }
 
                                     if (coverImage != null)
@@ -1226,7 +1273,7 @@ namespace MusicMetaWriter_CP.ViewModels
                                         tempCoverPath = Path.Combine(Path.GetTempPath(), $"cover_{Guid.NewGuid():N}.jpg");
                                         coverImage.Save(tempCoverPath);
 
-                                        mp4Input = $"-loop 1 -i \"{tempCoverPath}\" ";
+                                        mp4Input = $"-loop 1 -r 1 -i \"{tempCoverPath}\" ";
 
                                         // Scale cover to 1920x1080 with letterbox/pillarbox
                                         mp4Filter = "[0:v]scale=1920:1080:force_original_aspect_ratio=decrease," +
@@ -1249,13 +1296,15 @@ namespace MusicMetaWriter_CP.ViewModels
                                     mp4Filter = "[0:v]null[v0];";
                                 }
 
-                                formatargs = "-c:v libx264 -preset medium -crf 23 -pix_fmt yuv420p " +
-                                                "-c:a aac -b:a 192k -shortest -movflags +faststart";
+                                formatargs = $" -ar " + (Force44100 ? "44100" : track?.Sample_rate);
+                                formatargs += "-c:v libx264 -preset medium -crf 23 -pix_fmt yuv420p " +
+                                                "-c:a aac -b:a 320k -shortest -movflags +faststart";
 
                                 break;
 
                             case "mp3":
-                                formatargs = " -c:a libmp3lame -b:a 320k -write_id3v2 1 -id3v2_version 3";
+                                formatargs = $" -ar " + (Force44100 ? "44100" : track?.Sample_rate);
+                                formatargs += " -c:a libmp3lame -b:a 320k -write_id3v2 1 -id3v2_version 3";
                                 break;
 
                             case "wav":
@@ -1268,11 +1317,11 @@ namespace MusicMetaWriter_CP.ViewModels
                                 };
                                 formatargs = $" -c:a {pcmCodec}";
 
-                                if (ConvertBit && ConvertToBit == 16 && (track?.Bits_per_sample ?? 0) > 16)
+                                if (Dithering && ConvertBit && ConvertToBit == 16 && (track?.Bits_per_sample ?? 0) > 16)
                                 {
                                     extraFilter = ",aresample=osf=s16:dither_method=triangular_hp";
                                 }
-                                formatargs += $" -ar {track?.Sample_rate}";
+                                formatargs += $" -ar " + (Force44100 ? "44100" : track?.Sample_rate);
                                 break;
 
                             case "flac":
@@ -1285,12 +1334,12 @@ namespace MusicMetaWriter_CP.ViewModels
                                 {
                                     formatargs = " -c:a flac";
                                 }
-                                if (ConvertBit && ConvertToBit == 16 && (track?.Bits_per_sample ?? 0) > 16)
+                                if (Dithering && ConvertBit && ConvertToBit == 16 && (track?.Bits_per_sample ?? 0) > 16)
                                 {
                                     extraFilter = ",aresample=osf=s16:dither_method=triangular_hp";
                                 }
 
-                                formatargs += $" -ar {track?.Sample_rate}";
+                                formatargs += $" -ar " + (Force44100 ? "44100" : track?.Sample_rate);
                                 break;
 
                             case "aiff":
@@ -1304,12 +1353,12 @@ namespace MusicMetaWriter_CP.ViewModels
 
                                 formatargs = $" -c:a {aiffCodec}";
 
-                                if (ConvertBit && ConvertToBit == 16 && (track?.Bits_per_sample ?? 0) > 16)
+                                if (Dithering && ConvertBit && ConvertToBit == 16 && (track?.Bits_per_sample ?? 0) > 16)
                                 {
                                     extraFilter = ",aresample=osf=s16:dither_method=triangular_hp";
                                 }
 
-                                formatargs += $" -ar {track?.Sample_rate} -write_id3v2 1";
+                                formatargs += $" -ar " + (Force44100 ? "44100" : track?.Sample_rate) + " -write_id3v2 1";
                                 break;
                         }
                         #endregion
@@ -1357,9 +1406,9 @@ namespace MusicMetaWriter_CP.ViewModels
                                 tempCoverPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".jpg");
                                 newCover?.Save(tempCoverPath);
 
-                                cover = $"-i \"{tempCoverPath}\" -map 0:a -map 1:v -c:v mjpeg "
-                                    + (format == "flac" ? "-disposition:v attached_pic" : "")
-                                    + " -metadata:s:v title=\"Cover\" -metadata:s:v comment=\"Cover\" ";
+                                cover = $"-i \"{tempCoverPath}\" " + (format == "flac" ? "-map_metadata 0 -map -0:v? " : "") + "-map 0:a -map 1:v "
+                                    + (format == "flac" ? "-disposition:v attached_pic -c:v copy -metadata:s:v picture_type=3" : "-c:v mjpeg")
+                                    + " -metadata:s:v title=\"Cover\" -metadata:s:v comment=\"Cover (front)\" ";
                             }
                         }
                         #endregion
@@ -1369,11 +1418,11 @@ namespace MusicMetaWriter_CP.ViewModels
 
                         if(format.ToLower() == "mp4")
                         {
-                            string filterComplex = mp4Filter + "[1:a]anull[a]";
+                            string filterComplex = mp4Filter;
 
                             pre_args = $"-filter_complex \"{filterComplex}\" " +
                                    $"-map \"[v0]\" " +                     
-                                   $"-map \"[a]\" " +                          
+                                   $"-map \"1:a\" " +                          
                                    $"{formatargs} ";
 
                             args = $"-y {mp4Input}" +              
@@ -1390,7 +1439,7 @@ namespace MusicMetaWriter_CP.ViewModels
                                 if (!string.IsNullOrEmpty(filterPart))
                                     filterPart += extraFilter;
                                 else
-                                    filterPart = "-af" + extraFilter.TrimStart(',');
+                                    filterPart = "-af " + extraFilter.TrimStart(',');
                             }
 
                             pre_args = $"{cover} {filterPart} {formatargs} {metadata}";
@@ -1398,7 +1447,7 @@ namespace MusicMetaWriter_CP.ViewModels
                         }
                         #endregion
 
-                        WriteLog("> Args: " + pre_args);
+                        WriteLog("> Args: " + args);
 
                         LoadStatus = $"Exporting {track?.TrackName ?? baseFileName} → {format.ToUpper()}";
                         bool success = await RunFfmpegAsync(args, outputFilePath);
@@ -1505,6 +1554,52 @@ namespace MusicMetaWriter_CP.ViewModels
             Btn_replace_enabled = count > 0;
             Btn_remove_enabled = count > 0;
             Btn_analyze_enabled = count > 0;
+        }
+
+        partial void OnConvertBitChanged(bool value)
+        {
+            UpdateUseDithering();
+            UpdateLnAndConvertAvailable();
+        }
+        partial void OnConvertToBitChanged(int value)
+        {
+            UpdateUseDithering();
+        }
+        private void UpdateUseDithering()
+        {
+            UseDithering = ConvertBit && ConvertToBit == 16;
+        }
+
+        partial void OnUse_lnChanged(bool value)
+        {
+            UpdateLnAndConvertAvailable();
+        }
+        partial void OnExport_mp3Changed(bool value)
+        {
+            UpdateLnAndConvertAvailable();
+        }
+        partial void OnExport_mp4Changed(bool value)
+        {
+            UpdateLnAndConvertAvailable();
+        }
+        partial void OnExport_wavChanged(bool value)
+        {
+            UpdateLnAndConvertAvailable();
+        }
+        partial void OnExport_flacChanged(bool value)
+        {
+            UpdateLnAndConvertAvailable();
+        }
+        partial void OnExport_aiffChanged(bool value)
+        {
+            UpdateLnAndConvertAvailable();
+        }
+
+        private void UpdateLnAndConvertAvailable()
+        {
+            var formats = GetSelectedFormats();
+            LnAvailable = (formats.Length > 0 && !formats.All(f => f == "mp4"));
+            ConvertAvailable = LnAvailable;
         }
         #endregion
 
